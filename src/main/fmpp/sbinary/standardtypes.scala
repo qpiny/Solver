@@ -2,6 +2,7 @@ package sbinary;
 
 import Operations._;
 import scala.collection._;
+import scala.language.higherKinds
 import generic.CanBuildFrom
 
 trait BasicTypes extends CoreProtocol{

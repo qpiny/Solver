@@ -2,7 +2,6 @@ package org.rejna.solver
 
 import scala.collection.mutable.HashMap
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import language.postfixOps
 import java.util.concurrent.atomic.AtomicLong
 import akka.actor._
@@ -14,10 +13,12 @@ class PerfCounter(system: ActorSystem, config: Config) extends Extension {
   private val freq = config.getInt("show-freq") milliseconds
   private val log = Logging(system, this)(new LogSource[PerfCounter] { def genString(a: PerfCounter) = "PerfCounter" })
 
-  if (freq.toMillis > 0)
+  if (freq.toMillis > 0) {
+    implicit val execCtx = system.dispatcher
     system.scheduler.schedule(2 seconds, freq) {
       log.info(toString)
     }
+  }
 
   def increment(counterName: String) = get(counterName).incrementAndGet
   def decrement(counterName: String) = get(counterName).decrementAndGet

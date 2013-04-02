@@ -1,2 +1,10 @@
 /.project
 /gradle.properties
+/solver.log
+/.classpath
+/.cache
+/.settings
+/.gradle
+/build
+/bin
+/data

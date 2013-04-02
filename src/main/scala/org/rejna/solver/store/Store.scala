@@ -1,7 +1,6 @@
 package org.rejna.solver.store
 
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor._
 import akka.event.{ Logging, LogSource, LoggingReceive }
 import akka.pattern.ask
@@ -67,13 +66,13 @@ class Store(val system: ActorSystem, val config: Config) extends Extension with 
   def futureSave(value: NodeValue, children: Array[Int])(implicit timeout: Timeout) = {
     ask(storeActor, SaveMessage(None, value, children))
       .mapTo[SavedMessage]
-      .map(s => (s.id))
+      .map(s => (s.id))(system.dispatcher)
   }
 
   def futureLoad(id: Int)(implicit timeout: Timeout) =
     ask(storeActor, LoadMessage(None, id))
       .mapTo[LoadedMessage]
-      .map(l => (l.id, l.value, l.children))
+      .map(l => (l.id, l.value, l.children))(system.dispatcher)
 }
 
 object Store extends ExtensionId[Store] with ExtensionIdProvider {

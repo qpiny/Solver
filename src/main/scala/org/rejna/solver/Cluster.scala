@@ -1,10 +1,8 @@
 package org.rejna.solver
 
-
 import scala.util.Random
 import scala.math.max
 import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.collection.mutable.{ ListBuffer, HashMap }
 import scala.collection.JavaConversions._
@@ -29,7 +27,7 @@ object InitManagerMessage {
 }
 class InitManagerMessage(val clusterMembers: Array[ActorRef], val freq: Long, val nodeClass: String, val valueClass: String) extends SolverMessage {
   override def toString = "InitManagerMessage(clusterMemebers=%s, freq=%d, nodeClass=%s, valueClass=%s".format(
-      clusterMembers.mkString("(", ",", ")"), freq, nodeClass, valueClass)
+    clusterMembers.mkString("(", ",", ")"), freq, nodeClass, valueClass)
 }
 
 case class SendQueueSizeMessage() extends SolverMessage
@@ -60,6 +58,7 @@ trait ClusterMember {
 class Manager extends Actor with ActorLogging with ActorName {
   val cluster = Cluster(context.system)
   val perf = PerfCounter(context.system)
+  implicit val execCtx = context.system.dispatcher
 
   override val supervisorStrategy = new SupervisorStrategy {
     import SupervisorStrategy._
@@ -70,7 +69,7 @@ class Manager extends Actor with ActorLogging with ActorName {
     }
     def handleChildTerminated(context: ActorContext, child: ActorRef, children: Iterable[ActorRef]) = {}
     def processFailure(context: ActorContext, restart: Boolean, child: ActorRef,
-        cause: Throwable, stats: ChildRestartStats, children: Iterable[ChildRestartStats]) = {}
+      cause: Throwable, stats: ChildRestartStats, children: Iterable[ChildRestartStats]) = {}
   }
 
   def receive = LoggingReceive {
@@ -107,6 +106,8 @@ class Manager extends Actor with ActorLogging with ActorName {
 }
 
 class Cluster(val system: ActorSystem, val config: Config) extends Extension with LoggingClass {
+  implicit val execCtx = system.dispatcher
+  
   class Remote(val actorRef: ActorRef, val isLocal: Boolean) {
     var queueSize = 0
     val deploy = Deploy(scope = RemoteScope(actorRef.path.address))
@@ -219,14 +220,13 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
     waitInitialization
     val remote = getRemote(localManager)
     if (remote.isLocal) {
-      log.info("local actor creation started {} from {}", name, requester)
+      log.info("local actor creation started {}", name)
       val aref = system.actorOf(Props(actorClass).withDispatcher(dispatcher), name)
-      log.info("local actor create ended {}", name)
       message.map(aref.tell(_, requester))
       requester ! aref
     } else {
       val target = remote.actorRef
-      log.info("enqueue actor creation {} from {} to {}", name, requester, target)
+      log.info("enqueue actor creation {} to {}", name, target)
       target.tell(CreateActorMessage(name, actorClass, dispatcher, message), requester)
     }
   }
@@ -237,8 +237,7 @@ object Cluster extends ExtensionId[Cluster] with ExtensionIdProvider {
   override def createExtension(system: ExtendedActorSystem) = {
     val config = if (system.settings.config.hasPath("cluster")) {
       system.settings.config.getConfig("cluster")
-    }
-    else {
+    } else {
       ConfigFactory.empty
     }
     new Cluster(system, config)

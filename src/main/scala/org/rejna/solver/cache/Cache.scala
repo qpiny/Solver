@@ -4,7 +4,6 @@ import scala.collection.mutable.Map
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConversions._
 import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import language.postfixOps
 import akka.actor._
@@ -58,7 +57,6 @@ class Cache(val system: ActorSystem, val config: Config) extends Extension with 
   }
   val cluster = Cluster(system)
   cluster.subscribe(this)
-  //  implicit def ec = ExecutionContext.defaultExecutionContext(system)
 
   def onBecomeMaster(arefs: Iterable[ActorRef]): Unit = {
     log.debug("onBecomeMaster: start")
@@ -70,15 +68,18 @@ class Cache(val system: ActorSystem, val config: Config) extends Extension with 
       config.getString("value.cache-class"),
       Seq((classOf[Config], config.getConfig("node"))))
 
-    val cacheFutureActors = (0 until config.getInt("number-of-cache")).map(i =>
+    implicit val execCtx = system.dispatcher
+    val futureCacheActors = Future.sequence((0 until config.getInt("number-of-cache")).map(i =>
       cluster.createClusteredActor(
-          "cache_" + i,
-          classOf[CacheActor],
-          config.getString("dispatcher"),
-          Some(InitCacheMessage(nodesBuilder, valuesBuilder, i.toString))))
+        "cache_" + i,
+        classOf[CacheActor],
+        config.getString("dispatcher"),
+        Some(InitCacheMessage(nodesBuilder, valuesBuilder, i.toString)))))
 
-    val cacheActors = Await.result(Future.sequence(cacheFutureActors).map(_.flatten), 5 seconds)
-    Await.ready(cluster.createRouter("cache", cacheActors, config.getString("dispatcher")), 5 seconds)
+    val cacheFutureRouter = futureCacheActors.map(cacheActorRefs =>
+      cluster.createRouter("cache", cacheActorRefs.flatten, config.getString("dispatcher")))
+    
+    Await.ready(cacheFutureRouter, 10 seconds)
   }
 
   def checkCache(requestor: ActorRef, node: Node): Unit = {
@@ -106,8 +107,7 @@ object Cache extends ExtensionId[Cache] with ExtensionIdProvider {
   override def createExtension(system: ExtendedActorSystem): Cache = {
     val config = if (system.settings.config.hasPath("cache")) {
       system.settings.config.getConfig("cache")
-    }
-    else {
+    } else {
       ConfigFactory.empty
     }
     new Cache(system, config)
@@ -120,8 +120,6 @@ class CacheActor extends Actor with ActorName with ActorLogging {
   private lazy val nodes = Await.result(promiseNodes.future, 10 seconds)
   private val promiseValues = Promise[Map[Int, NodeValue]]
   private lazy val values = Await.result(promiseValues.future, 10 seconds)
-  //var nodes: Option[Map[Node, Either[Int, ActorRef]]] = None
-  //var values: Option[Map[Int, NodeValue]] = None
 
   log.debug("CacheActor: instantiation actorRef=%s".format(self))
 
@@ -130,8 +128,6 @@ class CacheActor extends Actor with ActorName with ActorLogging {
       log.debug("CacheActor >> InitCache: cacheId=%s".format(cacheId))
       promiseNodes.success(nodesBuilder.getNodeMap(cacheId))
       promiseValues.success(valuesBuilder.getValueMap(cacheId))
-    //nodes = Some(nodesBuilder.getNodeMap(cacheId))
-    //values = Some(valuesBuilder.getValueMap(cacheId))
 
     case m @ CheckCacheMessage(requestor, node) =>
       log.debug("CacheActor >> CheckCacheMessagecache: node=%s".format(node))
@@ -164,6 +160,7 @@ class CacheActor extends Actor with ActorName with ActorLogging {
       case Some(Left(id)) => // node id is in cache now check value cache
         values.get(id) match {
           case None => // value is not in cache, load it from store
+            implicit val execCtx = context.dispatcher
             store.futureLoad(id)(10 seconds).onSuccess { // XXX adjust timeout
               case (id, value, children) => requestor ! CacheHitMessage(id, value)
             }

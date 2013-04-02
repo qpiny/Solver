@@ -49,6 +49,7 @@ class BootableBase extends Bootable with LoggingClass {
   val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve
   val system = ActorSystem("solver", config)
   val cluster = Cluster(system)
+  LifoBlockingQueue.setLogger(Logging(system, "LifoThreadPool"))
 
   def startup = {
     val starter = system.actorOf(Props[StartActor], name = "slave.starter")
