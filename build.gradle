@@ -1,0 +1,87 @@
+version = '0.0.1'
+
+ext {
+	majorScalaVersion = '2.10'
+	scalaVersion = '2.10.1'
+	akkaVersion = '2.1.2'
+}
+
+apply plugin: 'scala'
+apply plugin: 'eclipse'
+apply plugin: 'application'
+
+targetCompatibility = 1.6
+sourceCompatibility = 1.6
+mainClassName = "org.rejna.solver.Main"
+
+run {
+   if ( project.hasProperty('start') ) {
+       args project.start
+   }
+}
+
+configurations {
+	fmpp
+	scalaStyle
+}
+
+repositories {
+	mavenCentral()
+	maven { url '/home/toom/.m2/repository' }
+	maven { url 'http://akka.io/releases' }
+	//maven { url 'https://oss.sonatype.org/content/repositories/releases/' }
+	maven { url 'http://repo.typesafe.com/typesafe/' }
+	ivy { url '/home/toom/.ivy2/local' }
+}
+
+dependencies {
+	//sshAntTask 'org.apache.ant:ant-jsch:1.7.1', 'jsch:jsch:0.1.29'
+	compile group: 'com.typesafe.akka', name: 'akka-actor_' + majorScalaVersion, version: akkaVersion
+	compile group: 'com.typesafe.akka', name: 'akka-slf4j_' + majorScalaVersion, version: akkaVersion
+	compile group: 'com.typesafe.akka', name: 'akka-remote_' + majorScalaVersion, version: akkaVersion
+	compile group: 'com.typesafe.akka', name: 'akka-kernel_' + majorScalaVersion, version: akkaVersion
+	compile group: 'org.scala-lang', name: 'scala-library', version: scalaVersion
+	compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.6.6'
+	compile group: 'org.apache.jdbm', name: 'jdbm', version: '3.0-alpha4'
+	compile group: 'com.google.guava', name: 'guava', version: '13.0-final'
+	compile group: 'com.google.code.findbugs', name: 'jsr305', version: '1.3.9'
+	compile group: 'com.typesafe', name: 'config', version: '0.5.0'
+	//compile group: 'org.scala-tools.sbinary', name:'sbinary_' + majorScalaVersion, version: '0.4.1'
+	fmpp group: 'net.sourceforge.fmpp', name: 'fmpp', version: '0.9.14'
+	scalaStyle group: 'org.scalastyle', name: 'scalastyle-batch_2.9.2', version: '0.2.0'
+}
+
+task generateFmppSources << {
+	println 'Generating sources....'
+	ant.taskdef(name: 'fmpp', classname: 'fmpp.tools.AntTask', classpath: configurations.fmpp.asPath)
+	ant.fmpp skipUnchanged: 'all', srcDir: 'src/main/fmpp', outputRoot: 'build/generated-sources/main/scala'
+}
+
+compileScala.dependsOn generateFmppSources
+sourceSets {
+	main { scala { srcDir 'build/generated-sources/main/scala' } }
+}
+
+task scalaStyle(type: JavaExec) {
+	classpath = configurations.scalaStyle
+	main = 'org.scalastyle.Main'
+	args = [
+		'--config', relativePath('src/scalaStyle/config.xml'),
+		relativePath('src/main/scala')
+	]
+}
+
+tasks.withType(ScalaCompile) {
+	scalaCompileOptions.fork = true
+    scalaCompileOptions.unchecked = true
+    scalaCompileOptions.deprecation = true
+
+    configure(scalaCompileOptions.forkOptions) {
+        memoryMaximumSize = '1g'
+        jvmArgs = ['-XX:MaxPermSize=512m']
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.5'
+}
