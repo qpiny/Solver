@@ -23,6 +23,7 @@ run {
 configurations {
 	fmpp
 	scalaStyle
+	deployerJars
 }
 
 repositories {
@@ -46,6 +47,7 @@ dependencies {
 	//compile group: 'org.scala-tools.sbinary', name:'sbinary_' + majorScalaVersion, version: '0.4.1'
 	fmpp group: 'net.sourceforge.fmpp', name: 'fmpp', version: '0.9.14'
 	scalaStyle group: 'org.scalastyle', name: 'scalastyle-batch_2.9.2', version: '0.2.0'
+	deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '2.2'
 }
 
 task generateFmppSources << {
@@ -82,3 +84,15 @@ tasks.withType(ScalaCompile) {
 task wrapper(type: Wrapper) {
     gradleVersion = '1.5'
 }
+
+task dep << {
+	slavesList.each { slave ->
+		println('---------')
+		println('url : ' + slave.url)
+		println('login : ' + slave.login)
+	}
+}
+//uploadArchives {
+//	slavesList.each { slave  ->
+//		repositories.mavenDeployer {
+//			configuration
