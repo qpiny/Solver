@@ -2,7 +2,6 @@ package org.rejna.solver.store
 
 import scala.collection.JavaConversions._
 import akka.actor._
-import akka.event.{ Logging, LogSource, LoggingReceive }
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.Future
@@ -25,7 +24,6 @@ case class SaveMessage(requestor: Option[ActorRef], value: NodeValue, children: 
 }
 case class SavedMessage(id: Int) extends StoreMessage
 case class LoadMessage(requestor: Option[ActorRef], id: Int) extends StoreMessage
-//@deprecated("why is there deadletter : DeadLetter(LoadedMessage(id, nodevalue, children), Actor[akka://solver/user/store-actor],Actor[akka://solver/deadLetters])", "soon")
 case class LoadedMessage(id: Int, value: NodeValue, children: Array[Int]) extends StoreMessage
 
 trait StoreCallback {
@@ -41,11 +39,6 @@ class Store(val system: ActorSystem, val config: Config) extends Extension with 
   def onBecomeMaster(arefs: Iterable[ActorRef]) = {
     val nodeValueClass = Class.forName(config.getString("class"))
     val nodeValueCompanion = DynamicAccess.getCompanion[TreeCompanion[NodeValue]](nodeValueClass)
-    /*
-    val storeActorCreator = () => DynamicAccess.createInstanceFor[StoreActorFactory](
-      config.getString("store-class"),
-      Seq((classOf[Config] -> config)))
-      .getStoreActor(config, nodeValueCompanion.maxChildren)*/
     val aref = system.actorOf(Props(new ConfigurableClassCreator[StoreActor](config.getString("store-class"), config)).withDispatcher(config.getString("dispatcher")), name = "store-actor")
     cluster.createRouter("store", IndexedSeq(aref), config.getString("dispatcher"))
   }
@@ -75,13 +68,13 @@ class Store(val system: ActorSystem, val config: Config) extends Extension with 
       .map(l => (l.id, l.value, l.children))(system.dispatcher)
 }
 
-object Store extends ExtensionId[Store] with ExtensionIdProvider {
+object Store extends ExtensionId[Store] with ExtensionIdProvider with LoggingClass {
   override def lookup = Store
   override def createExtension(system: ExtendedActorSystem) = {
-    val log = Logging(system, this)(new LogSource[Store.type] { def genString(a: Store.type) = "Store" })
-    log.info("Creation of Store extension with system: {}", system)
-    val config = if (system.settings.config.hasPath("store"))
+    log.info(s"Creation of Store extension with system: ${system}")
+    val config = if (system.settings.config.hasPath("store")) {
       system.settings.config.getConfig("store")
+    }
     else {
       log.info("store configuration not found")
       ConfigFactory.empty
@@ -90,12 +83,12 @@ object Store extends ExtensionId[Store] with ExtensionIdProvider {
   }
 }
 
-abstract class StoreActor extends Actor with ActorName with ActorLogging with ConfigurableClass {
+abstract class StoreActor extends Actor with ActorName with LoggingClass with ConfigurableClass {
   def save(value: NodeValue, children: Array[Int]): Int
   def load(id: Int): (NodeValue, Array[Int])
 
-  def receive = LoggingReceive {
-    case m @ SaveMessage(requestor, value, children) =>
+  def receive = LoggingReceive(log) {
+    case SaveMessage(requestor, value, children) =>
       requestor.getOrElse(sender) ! SavedMessage(save(value, children))
       PerfCounter(context.system).increment("store.save")
 

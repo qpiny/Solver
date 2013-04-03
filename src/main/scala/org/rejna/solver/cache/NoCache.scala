@@ -1,7 +1,7 @@
 package org.rejna.solver.cache
 
 import scala.collection.mutable.Map
-import akka.actor._
+import akka.actor.ActorRef
 import com.typesafe.config.Config
 import org.rejna.solver.Node
 import org.rejna.solver.NodeValue

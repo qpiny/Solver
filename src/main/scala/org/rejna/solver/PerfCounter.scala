@@ -5,13 +5,11 @@ import scala.concurrent.duration._
 import language.postfixOps
 import java.util.concurrent.atomic.AtomicLong
 import akka.actor._
-import akka.event.{ Logging, LogSource }
 import com.typesafe.config.{ Config, ConfigFactory }
 
-class PerfCounter(system: ActorSystem, config: Config) extends Extension {
+class PerfCounter(system: ActorSystem, config: Config) extends Extension with LoggingClass{
   private val counters = new HashMap[String, AtomicLong]()
   private val freq = config.getInt("show-freq") milliseconds
-  private val log = Logging(system, this)(new LogSource[PerfCounter] { def genString(a: PerfCounter) = "PerfCounter" })
 
   if (freq.toMillis > 0) {
     implicit val execCtx = system.dispatcher

@@ -8,7 +8,6 @@ import scala.concurrent.duration._
 import language.postfixOps
 import akka.actor._
 import akka.remote.RemoteScope
-import akka.event._
 import akka.dispatch._
 import akka.serialization.SerializationExtension
 import com.typesafe.config.Config
@@ -59,7 +58,6 @@ class Cache(val system: ActorSystem, val config: Config) extends Extension with 
   cluster.subscribe(this)
 
   def onBecomeMaster(arefs: Iterable[ActorRef]): Unit = {
-    log.debug("onBecomeMaster: start")
     val nodesBuilder = DynamicAccess.createInstanceFor[NodeCacheBuilder](
       config.getString("node.cache-class"),
       Seq((classOf[Config], config.getConfig("node"))))
@@ -95,7 +93,7 @@ class Cache(val system: ActorSystem, val config: Config) extends Extension with 
 
   def processCacheMessage(message: CacheMessage, callback: CacheCallback): Unit = {
     message match {
-      case m @ CacheHitMessage(id, value) => callback.onHit(id, value)
+      case CacheHitMessage(id, value) => callback.onHit(id, value)
       case CacheMissMessage() => callback.onMiss
       case CheckCacheMessage(requestor, node) => callback.addWaiter(requestor)
     }
@@ -114,26 +112,22 @@ object Cache extends ExtensionId[Cache] with ExtensionIdProvider {
   }
 }
 
-class CacheActor extends Actor with ActorName with ActorLogging {
+class CacheActor extends Actor with ActorName with LoggingClass {
   private val store = Store(context.system)
   private val promiseNodes = Promise[Map[Node, Either[Int, ActorRef]]]
   private lazy val nodes = Await.result(promiseNodes.future, 10 seconds)
   private val promiseValues = Promise[Map[Int, NodeValue]]
   private lazy val values = Await.result(promiseValues.future, 10 seconds)
 
-  log.debug("CacheActor: instantiation actorRef=%s".format(self))
-
-  def receive = {
+  def receive = LoggingReceive(log) {
     case InitCacheMessage(nodesBuilder, valuesBuilder, cacheId) =>
-      log.debug("CacheActor >> InitCache: cacheId=%s".format(cacheId))
       promiseNodes.success(nodesBuilder.getNodeMap(cacheId))
       promiseValues.success(valuesBuilder.getValueMap(cacheId))
 
-    case m @ CheckCacheMessage(requestor, node) =>
-      log.debug("CacheActor >> CheckCacheMessagecache: node=%s".format(node))
+    case CheckCacheMessage(requestor, node) =>
       checkCache(requestor, node)
 
-    case m @ CacheDataMessage(id, node, value) =>
+    case CacheDataMessage(id, node, value) =>
       nodes += node -> Left(id)
       values += id -> value
 
@@ -143,7 +137,7 @@ class CacheActor extends Actor with ActorName with ActorLogging {
     case DeadLetter(CheckCacheMessage(requestor, node), sender, recipient) =>
       self.tell(CheckCacheMessage(requestor, node), requestor)
 
-    case dl: DeadLetter => log.error("CacheActor >> DeadLetter : " + dl)
+    case dl: DeadLetter => log.error("CacheActor receive a dead letter : " + dl)
   }
 
   def checkCache(requestor: ActorRef, node: Node) = {

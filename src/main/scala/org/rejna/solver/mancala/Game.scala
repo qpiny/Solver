@@ -2,16 +2,14 @@ package org.rejna.solver.mancala
 
 import scala.collection.mutable.WrappedArray
 import sbinary._
-import org.rejna.solver.Node
-import org.rejna.solver.serializer.SolverMessage
-import org.rejna.solver.TreeCompanion
-import org.rejna.solver.serializer.SolverProtocol
+import org.rejna.solver.{ Node, TreeCompanion, LoggingClass }
+import org.rejna.solver.serializer.{ SolverMessage, SolverProtocol }
 import org.rejna.util.{ BitStreamReader, BitStreamWriter }
 
 import org.rejna.solver.mancala.Player._
 import org.rejna.solver.mancala.Action._
 
-object Game extends TreeCompanion[Game] with SolverMessage {
+object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
   val rootNode = new Game()
   val maxChildren = 6
   val entryLength = 8 // (4 bits * 6 slots + 8 bits * 1 totalSlot) * 2 players
@@ -38,8 +36,7 @@ object Game extends TreeCompanion[Game] with SolverMessage {
           val nbeads = game.slots(player)(i).nbeads
           val n = if (nbeads > 15) {
             if (overflow) {
-              println("ERROR : double overflow in slots")
-              println(game)
+              log.error("Double overflow in slots : ${game}")
             } else
               overflow = true
             15

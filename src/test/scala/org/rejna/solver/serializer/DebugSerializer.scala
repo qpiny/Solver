@@ -2,7 +2,6 @@ package org.rejna.solver.serializer
 
 import akka.actor._
 import akka.serialization.Serializer
-import akka.event.Logging
 import org.rejna.solver.LoggingClass
 
 class DebugSerializer(val system: ExtendedActorSystem) extends Serializer with LoggingClass {
@@ -12,7 +11,7 @@ class DebugSerializer(val system: ExtendedActorSystem) extends Serializer with L
    sys.error("debug deserialization is not implemented")
 
   def toBinary(o: AnyRef): Array[Byte] = {
-    log.error("Message: {}",o)
+    log.error("Message: ${o}")
     Array[Byte]()
   }
 

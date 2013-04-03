@@ -22,8 +22,8 @@ class JDBMCache(val config: Config) extends NodeCacheBuilder with Serializable {
   val collectionName = config.getString("collection")
 
   object ValueSerializer extends Serializer[Either[Int, ActorRef]] with Serializable {
-    import SolverProtocol.{ EitherFormat, IntFormat, ActorRefFormat, dataInputToInput, dataOutputToOutput }
-    def format = EitherFormat[Int, ActorRef]
+    import SolverProtocol.{ eitherFormat, IntFormat, actorRefFormat, dataInputToInput, dataOutputToOutput }
+    def format = eitherFormat[Int, ActorRef]
     def serialize(out: DataOutput, value: Either[Int, ActorRef]) = format.writes(out, value)
     def deserialize(in: DataInput): Either[Int, ActorRef] = {
       val oi = in.asInstanceOf[ObjectInput]
@@ -71,42 +71,3 @@ class JDBMCache(val config: Config) extends NodeCacheBuilder with Serializable {
 
   override def toString = "[JDBMCache]"
 }
-/*
-    new Map[Node, Either[Int, ActorRef]] {
-
-      def +=(kv: (Node, Either[Int, ActorRef])) = {
-        kv match {
-          case (node, Left(id)) => data.put(SolverProtocol.serializeObject(node), Left(id))
-          case (node, Right(worker)) => {
-            val serializedWorker = akka.serialization.Serialization.currentTransportAddress.value match {
-              case null => worker.path.toString()
-              case address => worker.path.toStringWithAddress(address)
-            }
-            data.put(SolverProtocol.serializeObject(node), Right(serializedWorker))
-          }
-        }
-        this
-      }
-
-      def -=(node: Node) = sys.error("not implemented")
-
-      def get(node: Node) = {
-        data.get(SolverProtocol.serializeObject(node)) match {
-          case null => None
-          case Left(id) => Some(Left(id))
-          case Right(worker) => Some(Right(context.actorFor(worker)))
-        }
-      }
-
-      def iterator = {
-        data.map(_ match {
-          case (node, Left(id)) => (SolverProtocol.deserializeObject(node, classOf[Node]), Left(id))
-          case (node, Right(worker)) => (SolverProtocol.deserializeObject(node, classOf[Node]), Right(context.actorFor(worker)))
-        }).iterator
-      }
-    }
-  }
-
-  override def toString = "[JDBMCache]"
-  */
-

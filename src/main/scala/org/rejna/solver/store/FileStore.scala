@@ -16,14 +16,12 @@ class FileStoreActor(val config: Config) extends StoreActor {
   val entryLength = nodeValueCompanion.entryLength + nodeValueCompanion.maxChildren * childrenIdSize
   var nodeId: Int = (file.length / entryLength).asInstanceOf[Int]
 
-  // XXX val childrenIdSize=3
   private def serializeChildren(children: Array[Int]) =
     children.flatMap(c =>
       (0 until childrenIdSize).map(i =>
         ((c >> 8 * i) & 0xff).asInstanceOf[Byte]))
-  // XXX serializeChildren(Array(0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 0x10111213, 0x14151617))
 
-  private def deserializeChildren(data: Seq[Byte]) = { // TODO by childrenIdSize
+  private def deserializeChildren(data: Seq[Byte]) = {
     require(data.size % childrenIdSize == 0, "Serialized children should be multiple of %d".format(childrenIdSize))
     (0 until data.size / childrenIdSize).map(c => data.slice(childrenIdSize * c, (c + 1) * childrenIdSize)).map(c => (0 /: c)((a, i) => (a << 8) + i & 0xff)).toArray
   }
@@ -31,9 +29,7 @@ class FileStoreActor(val config: Config) extends StoreActor {
   def save(value: NodeValue, children: Array[Int]): Int = {
     val id = nodeId
     nodeId += 1
-    //println("Value=%s children=%s".format(SolverProtocol.serializeObject(value).mkString("(", ",", ")"), serializeChildren(children).mkString("(", ",", ")")))
     val data = SolverProtocol.serializeObject(value) ++ serializeChildren(children)
-    //println("data=%s".format(data.mkString("(", ",", ")")))
     require(data.length == entryLength, "Invalid serialized data size (%d, should be %d)".format(data.length, entryLength))
     val pos = entryLength * id
     file.seek(pos)

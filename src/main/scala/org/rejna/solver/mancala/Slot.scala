@@ -10,13 +10,9 @@ class Slot(val owner: Player, var nbeads: Int) extends Serializable {
   private lazy val _nextSlot: Slot = Await.result(nextSlotPromise.future, 10 seconds)
   private val oppositeSlotPromise = Promise[Slot]
   private lazy val _oppositeSlot: Slot = Await.result(oppositeSlotPromise.future, 10 seconds)
-  //var oppositeSlot: Slot = null
-  var lastSlot: Boolean = false
+  private lazy val lastSlot: Boolean = _nextSlot.isInstanceOf[ScoreSlot]
 
-  def nextSlot_=(slot: Slot) = {
-    nextSlotPromise.success(slot)
-    lastSlot = slot.isInstanceOf[ScoreSlot]
-  }
+  def nextSlot_=(slot: Slot) = nextSlotPromise.success(slot)
 
   def nextSlot(player: Player) = {
     if (lastSlot && player != owner)

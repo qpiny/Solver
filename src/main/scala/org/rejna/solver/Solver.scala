@@ -2,35 +2,46 @@ package org.rejna.solver
 
 import org.apache.log4j.PropertyConfigurator
 import akka.actor._
-import akka.event.{ Logging, LoggingReceive }
 import akka.kernel.Bootable
 import com.typesafe.config.ConfigFactory
 import org.rejna.solver.cache.CheckCacheMessage
 import org.rejna.util.DynamicAccess
 
-trait ActorName { me: Actor with ActorLogging =>
+trait ActorName { me: Actor with LoggingClass =>
   override def toString = self.path.toString
 
   override def unhandled(message: Any) = {
-    log.error("Unhandle message from %s to %s : %s".format(sender, toString, message))
+    log.error("Unhandle message from ${sender} to ${this} : ${message}")
   }
 }
 
-trait LoggingClass { Self: { val system: ActorSystem } =>
-  lazy val log = Logging(system, getClass.getName)
+trait LoggingClass {
+  //Self: { val system: ActorSystem } =>
+  //lazy val log = Logging(system, getClass.getName)
+  lazy val log = org.slf4j.LoggerFactory.getLogger(this.getClass)
 }
 
-class StartActor extends Actor with ActorName with ActorLogging {
+object LoggingReceive {
+  def apply(log: org.slf4j.Logger)(receive: Actor.Receive) = new PartialFunction[Any, Unit] {
+    def isDefinedAt(m: Any) = receive.isDefinedAt(m)
+    def apply(m: Any) = {
+      log.trace("Receive ${m}")
+      receive(m)
+    }
+  }
+}
+
+class StartActor extends Actor with ActorName with LoggingClass {
   def receive = {
     case d @ DeadLetter(CheckCacheMessage(_, _), _, _) => // Ignore because process in CacheActor
-    case m: Any => log.info(m.toString)
+    case m: Any => log.info("Receive ${m}")
   }
 
   override val supervisorStrategy = new SupervisorStrategy {
     import SupervisorStrategy._
     def decider = {
       case t: Any =>
-        log.error("Fatal error : {}\n{}", t.getMessage, Logging.stackTraceFor(t))
+        log.error(s"Fatal error : ${t.getMessage}", t)
         Stop
     }
 
@@ -43,13 +54,12 @@ class StartActor extends Actor with ActorName with ActorLogging {
 }
 
 class BootableBase extends Bootable with LoggingClass {
-  //PropertyConfigurator.configure("log4j.properties");
+  PropertyConfigurator.configure("log4j.properties");
   val defaultConfig = ConfigFactory.load
-  println("starting " + getClass.getSimpleName.toLowerCase)
+  log.info(s"Starting Solver with profile ${this}")
   val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve
   val system = ActorSystem("solver", config)
   val cluster = Cluster(system)
-  LifoBlockingQueue.setLogger(Logging(system, "LifoThreadPool"))
 
   def startup = {
     val starter = system.actorOf(Props[StartActor], name = "slave.starter")

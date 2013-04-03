@@ -1,7 +1,8 @@
+package org.rejna.solver.serializer
+
 import sbinary._
 import sbinary.DefaultProtocol._
 import sbinary.Operations._
-
 import org.rejna.solver._
 import org.rejna.solver.mancala._
 

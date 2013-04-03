@@ -1,8 +1,6 @@
 package org.rejna.util
 
-import collection.mutable.{ ArrayStack, ArrayBuffer }
-import sbinary.Input
-import sbinary.Output
+import collection.mutable.ArrayStack
 
 @deprecated("Use instead BitStreamReader and BitStreamWriter", "now")
 class BitStream(init: Byte*) {

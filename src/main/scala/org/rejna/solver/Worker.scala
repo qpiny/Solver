@@ -1,7 +1,6 @@
 package org.rejna.solver
 
 import akka.actor._
-import akka.event.LoggingReceive
 import org.rejna.solver.store._
 import org.rejna.solver.cache._
 import org.rejna.solver.serializer.{ SolverMessage, SolverProtocol, CommonTypes }
@@ -14,7 +13,7 @@ trait WorkerProtocol extends CommonTypes {
   SolverProtocol.registerFormat(classOf[ResultMessage], asProduct3(ResultMessage)(ResultMessage.unapply(_).get))
 }
 
-class Worker extends Actor with ActorLogging with ActorName with CacheCallback with StoreCallback {
+class Worker extends Actor with LoggingClass with ActorName with CacheCallback with StoreCallback {
   val cluster = Cluster(context.system)
   val cache = Cache(context.system)
   val store = Store(context.system)
@@ -33,6 +32,7 @@ class Worker extends Actor with ActorLogging with ActorName with CacheCallback w
   }
 
   override def onMiss() = {
+    log.debug("Cache miss, starting children workers")
     val nodeChildren = node.children
     children = Array.fill[Int](nodeChildren.size)(-1)
     for ((on, i) <- nodeChildren.zipWithIndex;
@@ -55,10 +55,10 @@ class Worker extends Actor with ActorLogging with ActorName with CacheCallback w
     stop
   }
 
-  def receive = LoggingReceive {
+  def receive = LoggingReceive(log) {
     // From parent : start computation
     case m @ ComputeMessage(_requestor, _child, _node) =>
-      log.info("%s is starting computation".format(toString))
+      log.debug(s"${this} is starting computation")
       requestor = _requestor
       child = _child
       node = _node
@@ -89,7 +89,7 @@ class Worker extends Actor with ActorLogging with ActorName with CacheCallback w
   def stop = {
     requestor ! ResultMessage(child, result, id)
     cache.cache(id, node, result, this)
-    log.debug("Node " + this + " has finished")
+    log.debug("Node ${this} has finished")
     PerfCounter(context.system).increment("worker.finish")
     context.stop(self)
   }

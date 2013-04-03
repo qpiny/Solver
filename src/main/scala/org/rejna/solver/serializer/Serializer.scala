@@ -6,6 +6,7 @@ import language.implicitConversions
 import java.io.{ ByteArrayOutputStream, ByteArrayInputStream, DataInput, DataOutput }
 import akka.actor._
 import akka.serialization.Serializer
+import scala.concurrent.{ Promise, Await }
 import scala.concurrent.duration._
 import akka.event.{ Logging, LogSource }
 import com.typesafe.config.{ Config, ConfigFactory }
@@ -20,14 +21,17 @@ import sbinary.DefaultProtocol.wrap
 import sbinary.Input.javaInputToInput
 import sbinary.Output.javaOutputToOutput
 
+// Class derived from SolverMessage can be serializable using SolverProtocol
 trait SolverMessage extends Serializable
 
-object SolverProtocol extends DefaultProtocol with ClusterProtocol with CacheProtocol with WorkerProtocol with StoreProtocol {
-  var system: ExtendedActorSystem = _
-  lazy val log = Logging(system, this)(new LogSource[SolverProtocol.type] { def genString(a: SolverProtocol.type) = "SolverProtocol" })
-  lazy val messageTypes = ListBuffer[(Int, Summand[_ <: SolverMessage])]()
+object SolverProtocol extends DefaultProtocol with ClusterProtocol with CacheProtocol with WorkerProtocol with StoreProtocol with LoggingClass {
+  private lazy val messageTypes = ListBuffer[(Int, Summand[_ <: SolverMessage])]()
+  private val systemPromise = Promise[ExtendedActorSystem]
+  lazy val system = Await.result(systemPromise.future, 10 seconds)
+  
+  def setSystem(sys: ExtendedActorSystem) = systemPromise.success(sys)
 
-  implicit lazy val SolverFormat = new Format[SolverMessage] {
+  implicit lazy val solverFormat = new Format[SolverMessage] {
     def reads(in: Input): SolverMessage = {
       val idx = read[Byte](in)
       if (idx == -1)
@@ -55,7 +59,7 @@ object SolverProtocol extends DefaultProtocol with ClusterProtocol with CachePro
     messageTypes += messageTypes.size -> Summand(clazz, format)
 
   private def writeSum[T](out: Output, sm: SolverMessage, sum: Summand[T]) = {
-    //log.debug("SolverProtocol.writeSum(message={}, class={}, format={})", sm, sum.clazz, sum.format)
+    //log.debug("SolverProtocol.writeSum(message=${sm}, class=${sum.clazz}, format=${sum.format})")
     write(out, sum.clazz.cast(sm).asInstanceOf[T])(sum.format)
   }
 
@@ -80,9 +84,8 @@ object SolverProtocol extends DefaultProtocol with ClusterProtocol with CachePro
     messageTypes.find(s => clazz.isAssignableFrom(s._2.clazz)) match {
       case Some((i, sum)) => read(in)(sum.format).asInstanceOf[T]
       case None => {
-        println("class=%s".format(clazz))
-        println("messageTypes=%s".format(messageTypes))
-        sys.error("No known sum type for clazz " + clazz)
+        log.error(s"messageTypes=${messageTypes}")
+        sys.error(s"No known sum type for clazz ${clazz}")
       }
     }
   }
@@ -102,15 +105,15 @@ object SolverProtocol extends DefaultProtocol with ClusterProtocol with CachePro
 }
 
 class SBSerializer(val system: ExtendedActorSystem) extends Serializer with LoggingClass {
-  log.info("SBSerializer initialization")
-  SolverProtocol.system = system
-
+  log.debug("SBSerializer initialization")
+  SolverProtocol.setSystem(system)
+  
   def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef =
-    SolverProtocol.SolverFormat.reads(new ByteArrayInputStream(bytes))
+    SolverProtocol.solverFormat.reads(new ByteArrayInputStream(bytes))
 
   def toBinary(o: AnyRef): Array[Byte] = {
     val bao = new ByteArrayOutputStream
-    SolverProtocol.SolverFormat.writes(bao, o.asInstanceOf[SolverMessage])
+    SolverProtocol.solverFormat.writes(bao, o.asInstanceOf[SolverMessage])
     bao.toByteArray
   }
 

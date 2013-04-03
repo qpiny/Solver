@@ -15,7 +15,7 @@ trait TreeCompanion[T] {
 trait HasTreeCompanion
 
 trait Node extends HasTreeCompanion with SolverMessage {
-  def children: Array[Option[Node]] //Iterable[(Int, Node)]
+  def children: Array[Option[Node]] // to be replaced by Iterable[(Int, Node)] ?
   def getValue: NodeValue
 }
 
@@ -29,7 +29,6 @@ trait ConfigurableClass extends SolverMessage {
 
 class ConfigurableClassCreator[+T: ClassTag](val className: String, val config: Config) extends Function0[T] with SolverMessage with Serializable {
   def apply() = {
-    println(s"ConfigurableClassCreator($className)")
     DynamicAccess.createInstanceFor[T](
       className,
       Seq((classOf[Config] -> config)))

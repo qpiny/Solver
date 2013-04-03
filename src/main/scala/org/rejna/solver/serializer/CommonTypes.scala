@@ -12,21 +12,21 @@ import org.rejna.solver.{ Node, NodeValue, ConfigurableClass, ConfigurableClassC
 import org.rejna.util.DynamicAccess
 
 trait CommonTypes extends DefaultProtocol {
-  var system: ExtendedActorSystem
+  val system: ExtendedActorSystem
 
-  implicit val ActorRefFormat = wrap[ActorRef, String](aref =>
+  implicit val actorRefFormat = wrap[ActorRef, String](aref =>
     akka.serialization.Serialization.currentTransportAddress.value match {
       case null => aref.path.toString()
       case address => aref.path.toStringWithAddress(address)
     }, system.actorFor(_))
 
-  implicit val DurationFormat = wrap[Duration, Long](_.toMillis, _ milliseconds)
+  implicit val durationFormat = wrap[Duration, Long](_.toMillis, _ milliseconds)
 
-  implicit val ConfigFormat = wrap[Config, scala.collection.immutable.Map[String, String]](
+  implicit val configFormat = wrap[Config, scala.collection.immutable.Map[String, String]](
     _.root.unwrapped.map { case (k, v) ⇒ (k, v.toString) } toMap,
     ConfigFactory.parseMap(_))
 
-  implicit def ConfigurableClassFormat[T <: ConfigurableClass] = new Format[T] {
+  implicit def configurableClassFormat[T <: ConfigurableClass] = new Format[T] {
     def reads(in: Input) =
       DynamicAccess.createInstanceFor[ConfigurableClass](
         read[String](in),
@@ -37,7 +37,7 @@ trait CommonTypes extends DefaultProtocol {
     }
   }
 
-  implicit val ConfigurableClassCreatorFormat = new Format[ConfigurableClassCreator[AnyRef]] {
+  implicit val configurableClassCreatorFormat = new Format[ConfigurableClassCreator[AnyRef]] {
     def reads(in: Input) =
       DynamicAccess.createInstanceFor(
         read[String](in),
@@ -47,14 +47,14 @@ trait CommonTypes extends DefaultProtocol {
       write[Config](out, confClass.config)
     }
   }
-  SolverProtocol.registerFormat(classOf[ConfigurableClassCreator[AnyRef]], ConfigurableClassCreatorFormat)
+  SolverProtocol.registerFormat(classOf[ConfigurableClassCreator[AnyRef]], configurableClassCreatorFormat)
 
-  def ObjectFormat[T <: SolverMessage](clazz: Class[_ <: T]) = new Format[T] {
+  def solverMessageFormat[T <: SolverMessage](clazz: Class[_ <: T]) = new Format[T] {
     def reads(in: Input) = SolverProtocol.deserializeObject(in, clazz)
     def writes(out: Output, obj: T) = SolverProtocol.serializeObject(out, obj)
   }
 
-  def EitherFormat[T1, T2](implicit bin1: Format[T1], bin2: Format[T2]) = new Format[Either[T1, T2]] {
+  def eitherFormat[T1, T2](implicit bin1: Format[T1], bin2: Format[T2]) = new Format[Either[T1, T2]] {
     def reads(in: Input) = read[Byte](in) match {
       case 0 => Left(read[T1](in))
       case 1 => Right(read[T2](in))
@@ -72,7 +72,7 @@ trait CommonTypes extends DefaultProtocol {
       }
   }
 
-  implicit val nodeValueFormat: Format[NodeValue] = ObjectFormat[NodeValue](classOf[NodeValue])
+  implicit val nodeValueFormat: Format[NodeValue] = solverMessageFormat[NodeValue](classOf[NodeValue])
 
-  implicit val nodeFormat: Format[Node] = ObjectFormat[Node](classOf[Node])
+  implicit val nodeFormat: Format[Node] = solverMessageFormat[Node](classOf[Node])
 }
