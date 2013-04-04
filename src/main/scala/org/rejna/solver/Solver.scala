@@ -11,7 +11,7 @@ trait ActorName { me: Actor with LoggingClass =>
   override def toString = self.path.toString
 
   override def unhandled(message: Any) = {
-    log.error("Unhandle message from ${sender} to ${this} : ${message}")
+    log.error(s"Unhandle message from ${sender} to ${this} : ${message}")
   }
 }
 
@@ -34,7 +34,7 @@ object LoggingReceive {
 class StartActor extends Actor with ActorName with LoggingClass {
   def receive = {
     case d @ DeadLetter(CheckCacheMessage(_, _), _, _) => // Ignore because process in CacheActor
-    case m: Any => log.info("Receive ${m}")
+    case m: Any => log.info(s"Receive ${m}")
   }
 
   override val supervisorStrategy = new SupervisorStrategy {
@@ -54,7 +54,7 @@ class StartActor extends Actor with ActorName with LoggingClass {
 }
 
 class BootableBase extends Bootable with LoggingClass {
-  PropertyConfigurator.configure("log4j.properties");
+  //PropertyConfigurator.configure("log4j.properties");
   val defaultConfig = ConfigFactory.load
   log.info(s"Starting Solver with profile ${this}")
   val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve

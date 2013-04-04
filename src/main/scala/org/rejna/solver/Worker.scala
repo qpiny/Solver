@@ -32,7 +32,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   }
 
   override def onMiss() = {
-    log.debug("Cache miss, starting children workers")
+    log.debug(s"${this}: Cache miss, starting children workers")
     val nodeChildren = node.children
     children = Array.fill[Int](nodeChildren.size)(-1)
     for ((on, i) <- nodeChildren.zipWithIndex;
@@ -73,6 +73,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
       count -= 1
       if (count <= 0) {
         store.save(self, result, children)
+        stop
       }
 
     case m: CacheMessage => cache.processCacheMessage(m, this)
@@ -89,7 +90,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   def stop = {
     requestor ! ResultMessage(child, result, id)
     cache.cache(id, node, result, this)
-    log.debug("Node ${this} has finished")
+    log.info(s"Node ${this} has finished")
     PerfCounter(context.system).increment("worker.finish")
     context.stop(self)
   }
