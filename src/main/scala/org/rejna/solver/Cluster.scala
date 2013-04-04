@@ -216,7 +216,7 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
       log.debug("enqueueActorCreation(local): name=${name}")
       val aref = system.actorOf(Props(actorClass).withDispatcher(dispatcher), name)
       message.map(aref.tell(_, requester))
-      requester ! aref
+      //requester ! aref
     } else {
       val target = remote.actorRef
       log.debug("enqueueActorCreation(${target}): name=${name}")
