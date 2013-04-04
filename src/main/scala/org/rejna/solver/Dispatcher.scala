@@ -37,18 +37,18 @@ class LifoThreadPoolExecutor(config: Config, prerequisites: DispatcherPrerequisi
 // it acts as stack (last submitted work is executed first)
 import java.util.Collection
 object LifoBlockingQueue extends LinkedBlockingDeque[Runnable] with LoggingClass {
-  override def offer(r: Runnable) = { log.debug("addThread ${r.hashCode} (size=${size})"); offerFirst(r) }
-  override def offer(r: Runnable, timeout: Long, u: TimeUnit) = { log.debug("XXX offer2 (size=${size}"); offerFirst(r, timeout, u) }
-  override def add(r: Runnable) = { log.debug("XXX add (size=${size}"); offerFirst(r) }
-  override def put(r: Runnable) = { log.debug("XXX put (size=${size}"); putFirst(r) }
+  override def offer(r: Runnable) = { log.debug(s"addThread ${r.hashCode} (size=${size})"); offerFirst(r) }
+  override def offer(r: Runnable, timeout: Long, u: TimeUnit) = { log.debug(s"XXX offer2 (size=${size}"); offerFirst(r, timeout, u) }
+  override def add(r: Runnable) = { log.debug(s"XXX add (size=${size}"); offerFirst(r) }
+  override def put(r: Runnable) = { log.debug(s"XXX put (size=${size}"); putFirst(r) }
   override def poll(timeout: Long, u: TimeUnit) = {
     val r = super.poll(timeout, u)
-    log.debug("removeThread ${r.hashCode} (size=${size})")
+    log.debug(s"removeThread ${r.hashCode} (size=${size})")
     r
   }
-  override def take = { log.debug("XXX take (size=${size}"); super.take }
-  override def remove(a: Any) = { log.debug("XXX remove (size=${size}"); super.remove(a) }
-  override def drainTo(c: Collection[_ >: Runnable]) = { log.debug("XXX drainTo (size=${size}"); super.drainTo(c) }
-  override def drainTo(c: Collection[_ >: Runnable], m: Int) = { log.debug("XXX drainTo2 (size=${size}"); super.drainTo(c, m) }
+  override def take = { log.debug(s"XXX take (size=${size}"); super.take }
+  override def remove(a: Any) = { log.debug(s"XXX remove (size=${size}"); super.remove(a) }
+  override def drainTo(c: Collection[_ >: Runnable]) = { log.debug(s"XXX drainTo (size=${size}"); super.drainTo(c) }
+  override def drainTo(c: Collection[_ >: Runnable], m: Int) = { log.debug(s"XXX drainTo2 (size=${size}"); super.drainTo(c, m) }
   
 }

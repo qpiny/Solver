@@ -8,7 +8,7 @@ class DebugSerializer(val system: ExtendedActorSystem) extends Serializer with L
   log.info("DebugSerializer initialization")
 
   def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef =
-   sys.error("debug deserialization is not implemented")
+   sys.error(s"debug deserialization is not implemented")
 
   def toBinary(o: AnyRef): Array[Byte] = {
     log.error("Message: ${o}")

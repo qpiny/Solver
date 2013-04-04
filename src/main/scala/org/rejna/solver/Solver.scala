@@ -11,7 +11,7 @@ trait ActorName { me: Actor with LoggingClass =>
   override def toString = self.path.toString
 
   override def unhandled(message: Any) = {
-    log.error("Unhandle message from ${sender} to ${this} : ${message}")
+    log.error(s"Unhandle message from ${sender} to ${this} : ${message}")
   }
 }
 
@@ -25,7 +25,7 @@ object LoggingReceive {
   def apply(log: org.slf4j.Logger)(receive: Actor.Receive) = new PartialFunction[Any, Unit] {
     def isDefinedAt(m: Any) = receive.isDefinedAt(m)
     def apply(m: Any) = {
-      log.trace("Receive ${m}")
+      log.trace(s"Receive ${m}")
       receive(m)
     }
   }
@@ -34,7 +34,7 @@ object LoggingReceive {
 class StartActor extends Actor with ActorName with LoggingClass {
   def receive = {
     case d @ DeadLetter(CheckCacheMessage(_, _), _, _) => // Ignore because process in CacheActor
-    case m: Any => log.info("Receive ${m}")
+    case m: Any => log.info(s"Receive ${m}")
   }
 
   override val supervisorStrategy = new SupervisorStrategy {

@@ -59,7 +59,7 @@ object SolverProtocol extends DefaultProtocol with ClusterProtocol with CachePro
     messageTypes += messageTypes.size -> Summand(clazz, format)
 
   private def writeSum[T](out: Output, sm: SolverMessage, sum: Summand[T]) = {
-    //log.debug("SolverProtocol.writeSum(message=${sm}, class=${sum.clazz}, format=${sum.format})")
+    //log.debug(s"SolverProtocol.writeSum(message=${sm}, class=${sum.clazz}, format=${sum.format})")
     write(out, sum.clazz.cast(sm).asInstanceOf[T])(sum.format)
   }
 

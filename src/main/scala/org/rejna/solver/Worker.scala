@@ -89,7 +89,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   def stop = {
     requestor ! ResultMessage(child, result, id)
     cache.cache(id, node, result, this)
-    log.debug("Node ${this} has finished")
+    log.debug(s"Node ${this} has finished")
     PerfCounter(context.system).increment("worker.finish")
     context.stop(self)
   }

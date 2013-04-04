@@ -191,7 +191,7 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
   // create actor in each node (ask manager to create actor locally)
   def createClusteredActor(name: String, actorClass: Class[_ <: Actor], dispatcher: String, message: Option[SolverMessage] = None): Future[Iterable[ActorRef]] = {
     waitInitialization
-    log.debug("createClusteredActor: name=${name} actorClass=${actorClass} message=${message}")
+    log.debug(s"createClusteredActor: name=${name} actorClass=${actorClass} message=${message}")
     val arefFutureList = _managers.keys.map(aref => {
       ask(aref, CreateActorMessage(name, actorClass, dispatcher, message))(10 seconds).mapTo[ActorRef]
     })
@@ -201,7 +201,7 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
   // create a router in each node with list of worker actors
   def createRouter(name: String, arefs: IndexedSeq[ActorRef], dispatcher: String): Future[Iterable[ActorRef]] = {
     waitInitialization
-    log.debug("createRouter: name=${name} arefs=${arefs}")
+    log.debug(s"createRouter: name=${name} arefs=${arefs}")
     val arefFutureList = _managers.keys.map(aref =>
       ask(aref, CreateActorMessage(name, classOf[HashRouterActor], dispatcher, Some(InitRouterMessage(arefs.toArray))))(10 seconds).mapTo[ActorRef]
     )
@@ -213,13 +213,13 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
     waitInitialization
     val remote = getRemote(localManager)
     if (remote.isLocal) {
-      log.debug("enqueueActorCreation(local): name=${name}")
+      log.debug(s"enqueueActorCreation(local): name=${name}")
       val aref = system.actorOf(Props(actorClass).withDispatcher(dispatcher), name)
       message.map(aref.tell(_, requester))
       requester ! aref
     } else {
       val target = remote.actorRef
-      log.debug("enqueueActorCreation(${target}): name=${name}")
+      log.debug(s"enqueueActorCreation(${target}): name=${name}")
       target.tell(CreateActorMessage(name, actorClass, dispatcher, message), requester)
     }
   }
