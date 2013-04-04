@@ -54,18 +54,18 @@ object LifoBlockingQueue extends LinkedBlockingDeque[Runnable] with LoggingClass
     val queue = try {
       // r is instance of akka.dispatch.MailBox (private)
       r.getClass.getMethod("messageQueue").invoke(r) match {
-        case q if q == LifoBlockingQueue => "TODO : LifoBlockingQueue.peek"
-        case q: Any => "NotLifoBlockingQueue"
+        case q: java.util.Queue[Envelope] => if (q.size() == 0) "0" else s"${q.size} : ${q.peek.message.getClass.getSimpleName}"
+        case q: Any => s"not a Queue : ${q.getClass.toString}"
+
       }
-    }
-    catch { case t: Throwable => "NA" }
-    
+    } catch { case t: Throwable => "NA" }
+
     val actor = try {
-    	val actorCell = r.getClass.getMethod("actor").invoke(r)
-    	val actorRef = actorCell.getClass.getMethod("self").invoke(actorCell)
-    	actorRef.toString }
-    catch { case t: Throwable => "NA" }
-    
+      val actorCell = r.getClass.getMethod("actor").invoke(r)
+      val actorRef = actorCell.getClass.getMethod("self").invoke(actorCell)
+      actorRef.toString
+    } catch { case t: Throwable => "NA" }
+
     //s"class ${r.getClass} numberOfMessages=${numberOfMessages} actor=${actor}"
     s"${actor}[${queue}]"
   }
