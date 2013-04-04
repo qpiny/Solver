@@ -54,7 +54,7 @@ class StartActor extends Actor with ActorName with LoggingClass {
 }
 
 class BootableBase extends Bootable with LoggingClass {
-  PropertyConfigurator.configure("log4j.properties");
+  //PropertyConfigurator.configure("log4j.properties");
   val defaultConfig = ConfigFactory.load
   log.info(s"Starting Solver with profile ${this}")
   val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve

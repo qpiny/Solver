@@ -15,8 +15,11 @@ sourceCompatibility = 1.6
 mainClassName = "org.rejna.solver.Main"
 
 run {
-   if ( project.hasProperty('start') ) {
+   if (project.hasProperty('start')) {
        args project.start
+   }
+   if (!project.hasProperty('resume')) {
+       delete fileTree(dir: 'data')
    }
 }
 
