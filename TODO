@@ -4,6 +4,5 @@
  * Add deploy task in build.gradle
  * Execute generateFmppSources only if needed (Gradle)
  * Adjust dispatcher parameters
- 
-worker creation is queued so tree are not correctly traverse according to depth-first algorithm
-=> wait worker creation ? (the first one or all?)
+ * Add supervision interface (webui ?)
+ * Implement resume

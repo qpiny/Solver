@@ -1,14 +1,15 @@
 package org.rejna.solver
 
-import java.util.concurrent.{ TimeUnit, ThreadFactory, ExecutorService, LinkedBlockingDeque }
+import java.util.concurrent.{ TimeUnit, ThreadFactory, ExecutorService, LinkedBlockingDeque, LinkedBlockingQueue, BlockingQueue }
 import scala.concurrent.duration._
+import scala.collection.mutable.{ SynchronizedQueue, SynchronizedStack }
 import akka.actor.{ ActorSystem, ActorRef, ActorContext }
 import akka.dispatch._
 import akka.dispatch.Dispatcher
 import akka.dispatch.MonitorableThreadFactory
 import com.typesafe.config.Config
 
-class LifoThreadPoolExecutor(config: Config, prerequisites: DispatcherPrerequisites) extends ExecutorServiceConfigurator(config, prerequisites) {
+class SolverThreadPoolExecutor(config: Config, prerequisites: DispatcherPrerequisites) extends ExecutorServiceConfigurator(config, prerequisites) {
   import ThreadPoolConfigBuilder.conf_?
 
   val threadPoolConfig: ThreadPoolConfig = createThreadPoolConfigBuilder(config, prerequisites).config
@@ -19,9 +20,13 @@ class LifoThreadPoolExecutor(config: Config, prerequisites: DispatcherPrerequisi
       .setAllowCoreThreadTimeout(config getBoolean "allow-core-timeout")
       .setCorePoolSizeFromFactor(config getInt "core-pool-size-min", config getDouble "core-pool-size-factor", config getInt "core-pool-size-max")
       .setMaxPoolSizeFromFactor(config getInt "max-pool-size-min", config getDouble "max-pool-size-factor", config getInt "max-pool-size-max")
-      .withNewThreadPoolWithCustomBlockingQueue(LifoBlockingQueue)
+      .withNewThreadPoolWithCustomBlockingQueue(config getString "queue-type" match {
+        case "fifo" => FifoBlockingQueue
+        case "lifo" => LifoBlockingQueue
+        case _ => sys.error("Invalid queue type (should be fifo or lifo)")
+      })
   }
-
+  
   def createExecutorServiceFactory(id: String, threadFactory: ThreadFactory): ExecutorServiceFactory = {
     val tf = threadFactory match {
       case m: MonitorableThreadFactory ⇒
@@ -34,39 +39,53 @@ class LifoThreadPoolExecutor(config: Config, prerequisites: DispatcherPrerequisi
 }
 
 // Contains worker runnable queue
-// it acts as stack (last submitted work is executed first)
+// it acts as stack (first submitted work is executed first)
 import java.util.Collection
+
 object LifoBlockingQueue extends LinkedBlockingDeque[Runnable] with LoggingClass {
-  override def offer(r: Runnable) = { log.debug(s">> (${size}) + ${showRunnable(r)} "); offerFirst(r) }
-  override def offer(r: Runnable, timeout: Long, u: TimeUnit) = { log.debug("XXX offer2 (size=${size}"); offerFirst(r, timeout, u) }
-  override def add(r: Runnable) = { log.debug("XXX add (size=${size}"); offerFirst(r) }
-  override def put(r: Runnable) = { log.debug("XXX put (size=${size}"); putFirst(r) }
+
+  private def getInFifoQueue = Option(FifoBlockingQueue.poll())
+  
+  override def offer(r: Runnable) = offerFirst(r) //{ log.debug(s">> (${size}) + ${showRunnable(r)}"); super.offer(r) }
+  
   override def poll(timeout: Long, u: TimeUnit) = {
-    val r = super.poll(timeout, u)
-    log.debug(s">> (${size}) - ${showRunnable(r)}")
+    val r = getInFifoQueue.getOrElse(super.poll(timeout, u))
+    //log.debug(s">> (${size}) - ${showRunnable(r)}")
     r
   }
-  override def take = { log.debug("XXX take (size=${size}"); super.take }
-  override def remove(a: Any) = { log.debug("XXX remove (size=${size}"); super.remove(a) }
-  override def drainTo(c: Collection[_ >: Runnable]) = { log.debug("XXX drainTo (size=${size}"); super.drainTo(c) }
-  override def drainTo(c: Collection[_ >: Runnable], m: Int) = { log.debug("XXX drainTo2 (size=${size}"); super.drainTo(c, m) }
+  override def poll = getInFifoQueue.getOrElse(pollFirst)
+  
   def showRunnable(r: Runnable): String = {
     val queue = try {
       // r is instance of akka.dispatch.MailBox (private)
       r.getClass.getMethod("messageQueue").invoke(r) match {
-        case q: java.util.Queue[Envelope] => if (q.size() == 0) "0" else s"${q.size} : ${q.peek.message.getClass.getSimpleName}"
+        case q: java.util.Queue[_] =>
+          if (q.size() == 0) "0"
+          else s"${q.size} : ${q.peek.asInstanceOf[Envelope].message.getClass.getSimpleName}"
         case q: Any => s"not a Queue : ${q.getClass.toString}"
       }
-    }
-    catch { case t: Throwable => "NA" }
-    
+    } catch { case t: Throwable => "NA" }
+
     val actor = try {
-    	val actorCell = r.getClass.getMethod("actor").invoke(r)
-    	val actorRef = actorCell.getClass.getMethod("self").invoke(actorCell)
-    	actorRef.toString }
-    catch { case t: Throwable => "NA" }
-    
-    //s"class ${r.getClass} numberOfMessages=${numberOfMessages} actor=${actor}"
+      val actorCell = r.getClass.getMethod("actor").invoke(r)
+      val actorRef = actorCell.getClass.getMethod("self").invoke(actorCell)
+      actorRef.toString
+    } catch { case t: Throwable => "NA" }
+
     s"${actor}[${queue}]"
   }
+}
+
+
+// Contains worker runnable queue
+// it acts as queue (last submitted work is executed first)
+object FifoBlockingQueue extends LinkedBlockingQueue[Runnable] with LoggingClass {
+  
+//  override def poll(timeout: Long, u: TimeUnit) = {
+//    val r = super.poll(timeout, u)
+//     log.debug(s">> (${size}) - ${LifoBlockingQueue.showRunnable(r)}")
+//    r
+//  }
+//  
+//  override def offer(r: Runnable) = { log.debug(s">> (${size}) + ${LifoBlockingQueue.showRunnable(r)}"); super.offer(r) }
 }

@@ -32,7 +32,22 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
     result = _result
     stop
   }
-
+/*
+ * for ((on, i) <- nodeChildren.zipWithIndex;
+        n <- on) {
+      cluster.enqueueActorCreation(
+        self,
+        self.path.elements.last + "," + i.toString(),
+        classOf[Worker],
+        "worker-dispatcher",
+        Some(ComputeMessage(self, i, n)))
+      count += 1
+    }
+    if (count == 0) {
+      store.save(self, result, children)
+    }
+  }
+ */
   override def onMiss() = {
     log.debug(s"${this}: Cache miss, starting children workers")
     val nodeChildren = node.children
@@ -83,7 +98,6 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
       count -= 1
       if (count <= 0) {
         store.save(self, result, children)
-        stop
       }
 
     case m: CacheMessage => cache.processCacheMessage(m, this)
@@ -100,7 +114,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   def stop = {
     requestor ! ResultMessage(child, result, id)
     cache.cache(id, node, result, this)
-    log.info(s"Node ${this} has finished")
+    log.debug(s"Node ${this} has finished")
     PerfCounter(context.system).increment("worker.finish")
     context.stop(self)
   }

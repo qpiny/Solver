@@ -24,12 +24,16 @@ import sbinary.Output.javaOutputToOutput
 // Class derived from SolverMessage can be serializable using SolverProtocol
 trait SolverMessage extends Serializable
 
+case class SolverDeadLetter(message: SolverMessage, sender: ActorRef, recipient: ActorRef) extends SolverMessage
+
 object SolverProtocol extends DefaultProtocol with ClusterProtocol with CacheProtocol with WorkerProtocol with StoreProtocol with LoggingClass {
   private lazy val messageTypes = ListBuffer[(Int, Summand[_ <: SolverMessage])]()
   private val systemPromise = Promise[ExtendedActorSystem]
   lazy val system = Await.result(systemPromise.future, 10 seconds)
-  
+
   def setSystem(sys: ExtendedActorSystem) = systemPromise.success(sys)
+
+  registerFormat(classOf[SolverDeadLetter], asProduct3(SolverDeadLetter)(SolverDeadLetter.unapply(_).get))
 
   implicit lazy val solverFormat = new Format[SolverMessage] {
     def reads(in: Input): SolverMessage = {
@@ -107,13 +111,22 @@ object SolverProtocol extends DefaultProtocol with ClusterProtocol with CachePro
 class SBSerializer(val system: ExtendedActorSystem) extends Serializer with LoggingClass {
   log.debug("SBSerializer initialization")
   SolverProtocol.setSystem(system)
-  
-  def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef =
-    SolverProtocol.solverFormat.reads(new ByteArrayInputStream(bytes))
+
+  def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef = {
+    SolverProtocol.solverFormat.reads(new ByteArrayInputStream(bytes)) match {
+      case SolverDeadLetter(m, s, r) => DeadLetter(m, s, r)
+      case m: AnyRef => m
+    }
+  }
 
   def toBinary(o: AnyRef): Array[Byte] = {
     val bao = new ByteArrayOutputStream
-    SolverProtocol.solverFormat.writes(bao, o.asInstanceOf[SolverMessage])
+    o match {
+      case sm: SolverMessage => SolverProtocol.solverFormat.writes(bao, sm)
+      case dl @ DeadLetter(m: SolverMessage, s, r) =>
+        SolverProtocol.solverFormat.writes(bao, SolverDeadLetter(m, s, r))
+    }
+
     bao.toByteArray
   }
 
