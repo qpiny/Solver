@@ -36,7 +36,7 @@ object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
           val nbeads = game.slots(player)(i).nbeads
           val n = if (nbeads > 15) {
             if (overflow) {
-              log.error("Double overflow in slots : ${game}")
+              log.error(s"Double overflow in slots : ${game}")
             } else
               overflow = true
             15

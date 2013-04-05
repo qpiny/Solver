@@ -89,7 +89,17 @@ task wrapper(type: Wrapper) {
     gradleVersion = '1.5'
 }
 
+
 task dep << {
+	slavesList = [ {
+			String url="url_1"
+			String login="login_1"
+		}, {
+			String url="url_2"
+			String login="login_2"
+		} ]
+	
+	
 	slavesList.each { slave ->
 		println('---------')
 		println('url : ' + slave.url)

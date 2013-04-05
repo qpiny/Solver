@@ -1,5 +1,7 @@
 package org.rejna.solver
 
+import scala.concurrent.{ Future, Await }
+import scala.concurrent.duration._
 import akka.actor._
 import org.rejna.solver.store._
 import org.rejna.solver.cache._
@@ -17,13 +19,13 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   val cluster = Cluster(context.system)
   val cache = Cache(context.system)
   val store = Store(context.system)
-  var id = -1                   // id from store
-  var count = 0                 // number of children actor we're waiting a result
-  var requestor: ActorRef = _   // my parent
-  var child: Int = -1           // child number according to my parent, [0-6[ for mancala
-  var node: Node = _            // requested node computation (find node value)
-  var result: NodeValue = _     // computing node value
-  var children: Array[Int] = _  // my children ids
+  var id = -1 // id from store
+  var count = 0 // number of children actor we're waiting a result
+  var requestor: ActorRef = _ // my parent
+  var child: Int = -1 // child number according to my parent, [0-6[ for mancala
+  var node: Node = _ // requested node computation (find node value)
+  var result: NodeValue = _ // computing node value
+  var children: Array[Int] = _ // my children ids
 
   override def onHit(_id: Int, _result: NodeValue) = {
     id = _id
@@ -35,17 +37,25 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
     log.debug(s"${this}: Cache miss, starting children workers")
     val nodeChildren = node.children
     children = Array.fill[Int](nodeChildren.size)(-1)
-    for ((on, i) <- nodeChildren.zipWithIndex;
-        n <- on) {
-      cluster.enqueueActorCreation(
-        self,
-        self.path.elements.last + "," + i.toString(),
-        classOf[Worker],
-        "worker-dispatcher",
-        Some(ComputeMessage(self, i, n)))
-      count += 1
+    val futureChildrenRefs = nodeChildren.toList.zipWithIndex.map({ on_i =>
+      on_i match {
+        case (Some(n), i) =>
+	        count += 1
+	        Some(cluster.enqueueActorCreation(
+            self,
+            self.path.elements.last + "," + i.toString(),
+            classOf[Worker],
+            "worker-dispatcher",
+            Some(ComputeMessage(self, i, n))))
+                  case (None, _) => None
+      }
+    }).flatten
+    
+    if (count > 0) { // futureChildrenRefs.size > 0
+      val firstCompleted = Future.firstCompletedOf(futureChildrenRefs)(context.system.dispatcher)
+      Await.ready(firstCompleted, 30 seconds)
     }
-    if (count == 0) {
+    else {
       store.save(self, result, children)
     }
   }
@@ -57,12 +67,12 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
 
   def receive = LoggingReceive(log) {
     // From parent : start computation
-    case m @ ComputeMessage(_requestor, _child, _node) =>
+    case ComputeMessage(_requestor, _child, _node) =>
       log.debug(s"${this} is starting computation")
       requestor = _requestor
       child = _child
       node = _node
-      result = node.getValue	// empty node value
+      result = node.getValue // empty node value
       cache.checkCache(self, node)
       PerfCounter(context.system).increment("worker.start")
 

@@ -12,11 +12,11 @@ class HashRouterActor extends Actor with ActorName with LoggingClass {
     case InitRouterMessage(arefs) => routee ++= arefs
     case m @ DeadLetter(deadMessage, deadSender, deadRecipient) =>
       val aref = routee(deadMessage.hashCode.abs % routee.size)
-      log.debug("Sending dead message ${m} to routee ${aref}")
+      log.debug(s"Sending dead message ${m} to routee ${aref}")
       aref.forward(m)
     case m: Any =>
       val aref = routee(m.hashCode.abs % routee.size)
-      log.debug("Sending message ${m} to routee ${aref}")
+      log.debug(s"Sending message ${m} to routee ${aref}")
       aref.forward(m)
   }
 }

@@ -25,7 +25,7 @@ object LoggingReceive {
   def apply(log: org.slf4j.Logger)(receive: Actor.Receive) = new PartialFunction[Any, Unit] {
     def isDefinedAt(m: Any) = receive.isDefinedAt(m)
     def apply(m: Any) = {
-      log.trace("Receive ${m}")
+      log.trace(s"Receive ${m}")
       receive(m)
     }
   }
