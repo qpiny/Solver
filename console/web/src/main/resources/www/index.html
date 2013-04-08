@@ -3,8 +3,14 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Solver console</title>
+	<script type="text/javascript" src="smoothie.js"></script>
+	<script type="text/javascript">
+		var smoothie = new SmoothieChart();
+		smoothie.streamTo(document.getElementById("mycanvas"));
+	</script>
 </head>
 <body>
-
+	<h1>Solver Console !</h1>
+	<canvas id="mycanvas" width="400" height="100"></canvas>
 </body>
 </html>

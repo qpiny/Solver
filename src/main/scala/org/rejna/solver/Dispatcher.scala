@@ -79,7 +79,6 @@ object LifoBlockingQueue extends LinkedBlockingDeque[Runnable] with LoggingClass
 //          if (q.size() == 0) "0"
 //          else s"${q.size} : ${q.peek.asInstanceOf[Envelope].message.getClass.getSimpleName}"
 
-
 // Contains worker runnable queue
 // it acts as queue (last submitted work is executed first)
 object FifoBlockingQueue extends LinkedBlockingQueue[Runnable] with LoggingClass {
@@ -93,7 +92,7 @@ object FifoBlockingQueue extends LinkedBlockingQueue[Runnable] with LoggingClass
   //  override def offer(r: Runnable) = { log.debug(s">> (${size}) + ${LifoBlockingQueue.showRunnable(r)}"); super.offer(r) }
 }
 
-class WorkerQueue(val prio: Option[Int]) extends ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
+class WorkerQueue(val name: Option[String]) extends ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
   final def queue: Queue[Envelope] = this
 }
 
@@ -117,15 +116,13 @@ case class SolverMailbox() extends MailboxType with LoggingClass {
 class LoggingQueue(val name: String) extends ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics with LoggingClass {
   final def queue: Queue[Envelope] = this
 
-  
-  
   override def poll = {
     val e = super.poll //getInFifoQueue.getOrElse(super.poll(timeout, u))
     if (e != null)
       log.debug(s">> ${name} >-> ${e.message} (${e.sender})")
     e
   }
-  
+
   override def remove = {
     val e = super.remove() //getInFifoQueue.getOrElse(super.poll(timeout, u))
     if (e != null)
@@ -149,28 +146,33 @@ case class WorkerMailbox() extends MailboxType {
   def this(settings: ActorSystem.Settings, config: Config) = this()
 
   final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue =
-    new WorkerQueue(owner.map(_.path.name.length))
+    new WorkerQueue(owner.map(_.path.name))
 }
 
 object WorkerComparator extends Comparator[Runnable] with LoggingClass {
-  def getPrio(r: Runnable) = r.getClass.getMethod("messageQueue").invoke(r) match {
-    case w: WorkerQueue => w.prio.getOrElse(-1)
-    case _ => -1
+  def getName(r: Runnable) = r.getClass.getMethod("messageQueue").invoke(r) match {
+    case w: WorkerQueue => w.name.getOrElse { log.error("WorkerQueue has noname worker !"); "" }
+    case _ => ""
   }
 
   def compare(r1: Runnable, r2: Runnable) = {
-    val prio1 = getPrio(r1)
-    val prio2 = getPrio(r2)
-    if (prio1 > PrioBlockinkQueue.currentPrio) {
-      log.info(s"max prio ${PrioBlockinkQueue.currentPrio} -> ${prio1}")
-      PrioBlockinkQueue.currentPrio = prio1
+    val wname1 = getName(r1)
+    val wlen1 = wname1.length
+    val wname2 = getName(r2)
+    val wlen2 = wname2.length
+    if (wlen1 > PrioBlockinkQueue.currentPrio) {
+      log.info(s"max prio ${PrioBlockinkQueue.currentPrio} -> ${wlen1}")
+      PrioBlockinkQueue.currentPrio = wlen1
     }
-    if (prio2 > PrioBlockinkQueue.currentPrio) {
-      log.info(s"max prio ${PrioBlockinkQueue.currentPrio} -> ${prio2}")
-      PrioBlockinkQueue.currentPrio = prio2
+    if (wlen2 > PrioBlockinkQueue.currentPrio) {
+      log.info(s"max prio ${PrioBlockinkQueue.currentPrio} -> ${wlen2}")
+      PrioBlockinkQueue.currentPrio = wlen2
     }
 
-    prio2 - prio1 // FIXME check sign
+    if (wlen1 != wlen2)
+      wlen2 - wlen1
+    else
+      wname2.compareTo(wname1)
   }
 }
 
@@ -180,20 +182,20 @@ object PrioBlockinkQueue extends PriorityBlockingQueue[Runnable](10000, WorkerCo
 
   override def poll(timeout: Long, u: TimeUnit) = {
     val r = super.poll(timeout, u) //getInFifoQueue.getOrElse(super.poll(timeout, u))
-    val (actor, queue) = LifoBlockingQueue.getARefAndQueue(r)
-    queue.map { q => 
-	    if (q.size == 0)
-	    	log.info(s">> execute actor ${actor} with empty mailbox")
-    }
+//    val (actor, queue) = LifoBlockingQueue.getARefAndQueue(r)
+//    queue.map { q =>
+//      if (q.size == 0)
+//        log.info(s">> execute actor ${actor} with empty mailbox")
+//    }
     r
   }
 
   override def offer(r: Runnable) = {
-    val (actor, queue) = LifoBlockingQueue.getARefAndQueue(r)
-    queue.map { q =>
-      if (q.size == 0)
-    	log.info(s">> submit actor ${actor} with empty mailbox")
-    }
+//    val (actor, queue) = LifoBlockingQueue.getARefAndQueue(r)
+//    queue.map { q =>
+//      if (q.size == 0)
+//        log.info(s">> submit actor ${actor} with empty mailbox")
+//    }
     super.offer(r)
   }
 }

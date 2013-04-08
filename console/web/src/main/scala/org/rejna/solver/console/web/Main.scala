@@ -16,8 +16,9 @@ object Main extends App {
     val wsHandler = actorSystem.actorOf(Props[WebSocketHandler], "webSocketBroadcaster")
     val routes = Routes({
       case HttpRequest(httpRequest) => httpRequest match {
-        case GET(Path("/html")) => actorSystem.actorOf(Props[StaticPage]) ! httpRequest
-        case Path("/favicon.ico") => httpRequest.response.write(HttpResponseStatus.NOT_FOUND)
+          
+      case GET(_) => actorSystem.actorOf(Props[StaticPage]) ! httpRequest
+        //case Path("/favicon.ico") => httpRequest.response.write(HttpResponseStatus.NOT_FOUND)
       }
 
       case WebSocketHandshake(wsHandshake) => wsHandshake match {
