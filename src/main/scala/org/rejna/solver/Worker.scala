@@ -26,14 +26,23 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   var node: Node = _ // requested node computation (find node value)
   var result: NodeValue = _ // computing node value
   var children: Array[Int] = _ // my children ids
+  
+  override def preStart = {
+    log.info(s"${this} is created")
+  }
 
   override def onHit(_id: Int, _result: NodeValue) = {
     id = _id
     result = _result
     stop
   }
-/*
- * for ((on, i) <- nodeChildren.zipWithIndex;
+
+/* SYNC *************/
+  override def onMiss() = {
+    log.info(s"${this}: Cache miss, starting children workers")
+    val nodeChildren = node.children
+    children = Array.fill[Int](nodeChildren.size)(-1)
+    for ((on, i) <- nodeChildren.zipWithIndex;
         n <- on) {
       cluster.enqueueActorCreation(
         self,
@@ -47,7 +56,8 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
       store.save(self, result, children)
     }
   }
- */
+
+/* ASYNC *************
   override def onMiss() = {
     //log.debug(s"${this}: Cache miss, starting children workers")
     val nodeChildren = node.children
@@ -79,7 +89,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
     id = _id
     stop
   }
-
+*/
   def receive = LoggingReceive(log) {
     // From parent : start computation
     case ComputeMessage(_requestor, _child, _node) =>

@@ -29,11 +29,13 @@ configurations {
 	deployerJars
 }
 
-repositories {
-	mavenCentral()
-	maven { url 'http://akka.io/releases' }
-	//maven { url 'https://oss.sonatype.org/content/repositories/releases/' }
-	maven { url 'http://repo.typesafe.com/typesafe/' }
+allprojects {
+	repositories {
+		mavenCentral()
+		maven { url 'http://akka.io/releases' }
+		//maven { url 'https://oss.sonatype.org/content/repositories/releases/' }
+		maven { url 'http://repo.typesafe.com/typesafe/' }
+	}
 }
 
 dependencies {
@@ -60,7 +62,7 @@ task generateFmppSources << {
 	ant.fmpp skipUnchanged: 'all', srcDir: 'src/main/fmpp', outputRoot: 'build/generated-sources/main/scala'
 }
 
-compileScala.dependsOn generateFmppSources
+//compileScala.dependsOn generateFmppSources
 sourceSets {
 	main { scala { srcDir 'build/generated-sources/main/scala' } }
 }

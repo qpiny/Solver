@@ -3,6 +3,11 @@
 		case Terminated(children) => 
  * Add deploy task in build.gradle
  * Execute generateFmppSources only if needed (Gradle)
+ 	cf. http://www.gradle.org/docs/current/userguide/more_about_tasks.html#N10E76
+ 	task myTask {
+	    ext.srcFile = file('..')
+	    ext.destDir = new File(buildDir, '..')
+	    ...
  * Adjust dispatcher parameters
  * Add supervision interface (webui ?)
  * Implement resume

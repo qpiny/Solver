@@ -57,26 +57,28 @@ object LifoBlockingQueue extends LinkedBlockingDeque[Runnable] with LoggingClass
   }
   override def poll = getInFifoQueue.getOrElse(pollFirst)
 
-  def showRunnable(r: Runnable): String = {
+  def getARefAndQueue(r: Runnable): (Option[ActorRef], Option[Queue[Envelope]]) = {
     val queue = try {
       // r is instance of akka.dispatch.MailBox (private)
       r.getClass.getMethod("messageQueue").invoke(r) match {
-        case q: java.util.Queue[_] =>
-          if (q.size() == 0) "0"
-          else s"${q.size} : ${q.peek.asInstanceOf[Envelope].message.getClass.getSimpleName}"
-        case q: Any => s"not a Queue : ${q.getClass.toString}"
+        case q: java.util.Queue[_] => Some(q.asInstanceOf[Queue[Envelope]])
+        case q: Any => None
       }
-    } catch { case t: Throwable => "NA" }
+    } catch { case t: Throwable => None }
 
     val actor = try {
-      val actorCell = r.getClass.getMethod("actor").invoke(r)
-      val actorRef = actorCell.getClass.getMethod("self").invoke(actorCell)
-      actorRef.toString
-    } catch { case t: Throwable => "NA" }
+      val actorCell = r.getClass.getMethod("actor").invoke(r) // .asInstanceOf[ActorCell]
+      val actorRef = actorCell.getClass.getMethod("self").invoke(actorCell).asInstanceOf[ActorRef]
+      Some(actorRef)
+    } catch { case t: Throwable => None }
 
-    s"${actor}[${queue}]"
+    (actor, queue)
   }
 }
+
+//          if (q.size() == 0) "0"
+//          else s"${q.size} : ${q.peek.asInstanceOf[Envelope].message.getClass.getSimpleName}"
+
 
 // Contains worker runnable queue
 // it acts as queue (last submitted work is executed first)
@@ -93,6 +95,53 @@ object FifoBlockingQueue extends LinkedBlockingQueue[Runnable] with LoggingClass
 
 class WorkerQueue(val prio: Option[Int]) extends ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
   final def queue: Queue[Envelope] = this
+}
+
+case class SolverMailbox() extends MailboxType with LoggingClass {
+  def this(settings: ActorSystem.Settings, config: Config) = this()
+
+  final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue = {
+    val ownerName: String = owner.map(_.toString).getOrElse("NA")
+    log.info(s"Creating mailbox for ${ownerName}")
+    if (ownerName.indexOf("system") > 0 || ownerName == "Actor[akka://solver/]" || ownerName == "Actor[akka://solver/user]") {
+      log.info(s"Monitoring mailbox ${ownerName}")
+      new LoggingQueue(ownerName)
+    } else {
+      new ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
+        final def queue: Queue[Envelope] = this
+      }
+    }
+  }
+}
+
+class LoggingQueue(val name: String) extends ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics with LoggingClass {
+  final def queue: Queue[Envelope] = this
+
+  
+  
+  override def poll = {
+    val e = super.poll //getInFifoQueue.getOrElse(super.poll(timeout, u))
+    if (e != null)
+      log.debug(s">> ${name} >-> ${e.message} (${e.sender})")
+    e
+  }
+  
+  override def remove = {
+    val e = super.remove() //getInFifoQueue.getOrElse(super.poll(timeout, u))
+    if (e != null)
+      log.debug(s">> ${name} >-> ${e.message} (${e.sender})")
+    e
+  }
+
+  override def offer(e: Envelope) = {
+    log.debug(s">> ${name} <-< ${e.message} (${e.sender})");
+    super.offer(e)
+  }
+
+  override def add(e: Envelope) = {
+    log.debug(s">> ${name} <-< ${e.message} (${e.sender})");
+    super.add(e)
+  }
 }
 
 case class WorkerMailbox() extends MailboxType {
@@ -120,7 +169,7 @@ object WorkerComparator extends Comparator[Runnable] with LoggingClass {
       log.info(s"max prio ${PrioBlockinkQueue.currentPrio} -> ${prio2}")
       PrioBlockinkQueue.currentPrio = prio2
     }
-      
+
     prio2 - prio1 // FIXME check sign
   }
 }
@@ -131,11 +180,22 @@ object PrioBlockinkQueue extends PriorityBlockingQueue[Runnable](10000, WorkerCo
 
   override def poll(timeout: Long, u: TimeUnit) = {
     val r = super.poll(timeout, u) //getInFifoQueue.getOrElse(super.poll(timeout, u))
-    log.debug(s">> (${size}) - ${LifoBlockingQueue.showRunnable(r)}")
+    val (actor, queue) = LifoBlockingQueue.getARefAndQueue(r)
+    queue.map { q => 
+	    if (q.size == 0)
+	    	log.info(s">> execute actor ${actor} with empty mailbox")
+    }
     r
   }
 
-  override def offer(r: Runnable) = { log.debug(s">> (${size}) + ${LifoBlockingQueue.showRunnable(r)}"); super.offer(r) }
+  override def offer(r: Runnable) = {
+    val (actor, queue) = LifoBlockingQueue.getARefAndQueue(r)
+    queue.map { q =>
+      if (q.size == 0)
+    	log.info(s">> submit actor ${actor} with empty mailbox")
+    }
+    super.offer(r)
+  }
 }
 
 

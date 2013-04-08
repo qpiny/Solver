@@ -202,7 +202,7 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
   }
 
   // ask actor creation in node with lower load
-  def enqueueActorCreation(requester: ActorRef, name: String, actorClass: Class[_ <: Actor], dispatcher: String, message: Option[SolverMessage] = None): Future[ActorRef] = {
+  def enqueueActorCreation(requester: ActorRef, name: String, actorClass: Class[_ <: Actor], dispatcher: String, message: Option[SolverMessage] = None) = {
     waitInitialization
     val remote = getRemote(localManager)
     if (remote.isLocal) {
@@ -210,12 +210,12 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
       val aref = system.actorOf(Props(actorClass).withDispatcher(dispatcher), name)
       message.map(aref.tell(_, requester))
       //requester ! aref
-      Future(aref)
+      //Future(aref)
     } else {
       val target = remote.actorRef
       log.debug(s"enqueueActorCreation(${target}): name=${name}")
-      //target.tell(CreateActorMessage(name, actorClass, dispatcher, message), requester)
-      ask(target, CreateActorMessage(name, actorClass, dispatcher, message))(30 seconds).mapTo[ActorRef]
+      target.tell(CreateActorMessage(name, actorClass, dispatcher, message), requester)
+      //ask(target, CreateActorMessage(name, actorClass, dispatcher, message))(30 seconds).mapTo[ActorRef]
     }
   }
 }
