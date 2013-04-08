@@ -21,11 +21,11 @@ class PerfCounter(system: ActorSystem, config: Config) extends Extension with Lo
   def increment(counterName: String) = get(counterName).incrementAndGet
   def decrement(counterName: String) = get(counterName).decrementAndGet
   def get(counterName: String) = counterName match {
-    case "queue.size" => new AtomicLong(LifoBlockingQueue.size)
+    case "queue.size" => new AtomicLong(PrioBlockinkQueue.size) //LifoBlockingQueue.size)
     case _ => counters.getOrElseUpdate(counterName, new AtomicLong(0))
   }
   def apply(counterName: String) = get(counterName).get
-  override def toString = (counters + ("queue.size" -> LifoBlockingQueue.size)).toString
+  override def toString = (counters + ("queue.size" -> PrioBlockinkQueue.size) + ("queue.prio" -> PrioBlockinkQueue.currentPrio)).toString
 }
 
 object PerfCounter extends ExtensionId[PerfCounter] with ExtensionIdProvider {

@@ -49,7 +49,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   }
  */
   override def onMiss() = {
-    log.debug(s"${this}: Cache miss, starting children workers")
+    //log.debug(s"${this}: Cache miss, starting children workers")
     val nodeChildren = node.children
     children = Array.fill[Int](nodeChildren.size)(-1)
     val futureChildrenRefs = nodeChildren.toList.zipWithIndex.map({ on_i =>

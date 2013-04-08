@@ -79,30 +79,24 @@ class Manager extends Actor with LoggingClass with ActorName {
       DynamicAccess.getCompanion[TreeCompanion[_]](valueClass).registerSerializer
       if (freq.length > 0) context.system.scheduler.schedule(2 seconds, freq, self, SendQueueSizeMessage())
 
-    case SendQueueSizeMessage() => Future {
+    case SendQueueSizeMessage() =>
       val queueSizeMessage = QueueSizeMessage(self, perf("queue.size").toInt) // + pc("worker.start").toInt - pc("worker.finish").toInt)
       cluster.managers.keys.foreach(aref => aref ! queueSizeMessage)
-    }
 
     case QueueSizeMessage(managerRef, size) =>
-      Future {
-        cluster.updateManagerQueueSize(managerRef, size)
-      }
+      cluster.updateManagerQueueSize(managerRef, size)
 
     case CreateActorMessage(name, actorClass, dispatcher, message) => {
-      val requestor = sender
-      Future {
-        val aref = context.actorOf(Props(actorClass).withDispatcher(dispatcher), name)
-        message.map(aref.tell(_, sender))
-        requestor ! aref
-      }
+      val aref = context.actorOf(Props(actorClass).withDispatcher(dispatcher), name)
+      message.map(aref.tell(_, sender))
+      sender ! aref
     }
   }
 }
 
 class Cluster(val system: ActorSystem, val config: Config) extends Extension with LoggingClass {
   implicit val execCtx = system.dispatcher
-  
+
   class Remote(val actorRef: ActorRef, val isLocal: Boolean) {
     var queueSize = 0
     val deploy = Deploy(scope = RemoteScope(actorRef.path.address))
@@ -203,8 +197,7 @@ class Cluster(val system: ActorSystem, val config: Config) extends Extension wit
     waitInitialization
     log.debug(s"createRouter: name=${name} arefs=${arefs}")
     val arefFutureList = _managers.keys.map(aref =>
-      ask(aref, CreateActorMessage(name, classOf[HashRouterActor], dispatcher, Some(InitRouterMessage(arefs.toArray))))(10 seconds).mapTo[ActorRef]
-    )
+      ask(aref, CreateActorMessage(name, classOf[HashRouterActor], dispatcher, Some(InitRouterMessage(arefs.toArray))))(10 seconds).mapTo[ActorRef])
     Future.sequence(arefFutureList)
   }
 
