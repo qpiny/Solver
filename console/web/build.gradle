@@ -6,11 +6,16 @@ apply plugin: 'application'
 
 mainClassName = "org.rejna.solver.console.web.Main"
 
+repositories {
+	maven { url 'http://repo.spray.io/' }
+}
+
 dependencies {
 	compile group: 'org.scala-lang', name: 'scala-library', version: scalaVersion
 	compile group: 'org.mashupbots.socko', name: 'socko-webserver_' + majorScalaVersion, version: '0.2.4'
 	// Force akka version
 	compile group: 'com.typesafe.akka', name: 'akka-actor_' + majorScalaVersion, version: akkaVersion
 	compile group: 'com.typesafe.akka', name: 'akka-slf4j_' + majorScalaVersion, version: akkaVersion
+	compile group: 'io.spray', name: 'spray-json_' + majorScalaVersion, version: '1.2.3'
 	//test group: 'com.typesafe.akka', name: 'akka-testkit_' + majorScalaVersion, version: akkaVersion
 }

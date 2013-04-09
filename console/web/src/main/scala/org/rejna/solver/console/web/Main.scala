@@ -3,9 +3,9 @@ package org.rejna.solver.console.web
 import akka.actor.ActorSystem
 import akka.actor.Props
 
-import org.mashupbots.socko.events.HttpResponseStatus
-import org.mashupbots.socko.events.WebSocketHandshakeEvent
+import org.mashupbots.socko.events.{ HttpResponseStatus, WebSocketHandshakeEvent }
 import org.mashupbots.socko.routes._
+import org.mashupbots.socko.handlers.{ StaticContentHandler, StaticContentHandlerConfig, StaticResourceRequest }
 import org.mashupbots.socko.webserver.WebServer
 import org.mashupbots.socko.webserver.WebServerConfig
 
@@ -13,20 +13,31 @@ object Main extends App {
 
   override def main(args: Array[String]) = {
     val actorSystem = ActorSystem("StandAloneConsole")
-    val wsHandler = actorSystem.actorOf(Props[WebSocketHandler], "webSocketBroadcaster")
+
+    val staticHandler = actorSystem.actorOf(Props(new StaticContentHandler(new StaticContentHandlerConfig)))
+    val wsHandler = actorSystem.actorOf(Props[WebSocketHandler])
+    
     val routes = Routes({
-      case HttpRequest(httpRequest) => httpRequest match {
-          
-      case GET(_) => actorSystem.actorOf(Props[StaticPage]) ! httpRequest
-        //case Path("/favicon.ico") => httpRequest.response.write(HttpResponseStatus.NOT_FOUND)
+      case HttpRequest(request) => request match {
+        case GET(Path("/")) =>
+          staticHandler ! new StaticResourceRequest(request, "www/index.html")
+        case GET(PathSegments("flot" :: file :: Nil)) =>
+          staticHandler ! new StaticResourceRequest(request, "www/flot/" + file)
+        case GET(Path(file)) => //actorSystem.actorOf(Props[StaticPage]) ! httpRequest
+          staticHandler ! new StaticResourceRequest(request, "www/" + file)
+        case _ => request.response.write(HttpResponseStatus.BAD_REQUEST, "Invalid request")
       }
 
       case WebSocketHandshake(wsHandshake) => wsHandshake match {
         case Path("/websocket/") =>
+          println("Authorize websocket connection")
           wsHandshake.authorize()
       }
 
-      case WebSocketFrame(wsFrame) => wsHandler ! wsFrame
+      case WebSocketFrame(wsFrame) => {
+        println("Register websocket connection")
+        wsHandler ! WSRegistration(wsFrame)
+      }
 
     })
 
