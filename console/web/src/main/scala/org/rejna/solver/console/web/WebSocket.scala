@@ -15,11 +15,14 @@ import DefaultJsonProtocol._
 
 import org.mashupbots.socko.events.WebSocketFrameEvent
 
+import org.rejna.solver.PerfCounter
+
 case class WSRegistration(frame: WebSocketFrameEvent)
 case object SendData
 
 class WebSocketHandler extends Actor {
   val subscribers = Set.empty[WebSocketFrameEvent]
+  
 
   override def preStart = {
     context.system.scheduler.schedule(2 seconds, 1 seconds, self, SendData)(context.system.dispatcher)
@@ -43,7 +46,7 @@ class WebSocketHandler extends Actor {
                 "timestamp" -> JsString(new Date().getTime.toString),
                 "load" -> JsString(cpuLoad.toString),
                 "random1" -> JsString((Random.nextInt & 0xff).toString),
-                "random2" -> JsString(Random.nextInt.toString))))).compactPrint)
+                "random2" -> JsString((Random.nextInt & 0xff).toString))))).compactPrint)
           }
         } catch {
           case e: ClosedChannelException => // never happens, even if we write in closed channel

@@ -1,1 +1,1 @@
-include "console:web"
+include 'core', 'console:web'

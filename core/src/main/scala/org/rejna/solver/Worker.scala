@@ -99,7 +99,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
       node = _node
       result = node.getValue // empty node value
       cache.checkCache(self, node)
-      PerfCounter(context.system).increment("worker.start")
+      PerfCounter(context.system).incCounter("worker.start")
 
     // From children : partial result
     case ResultMessage(_child, _result, _id) =>
@@ -125,7 +125,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
     requestor ! ResultMessage(child, result, id)
     cache.cache(id, node, result, this)
     log.debug(s"Node ${this} has finished")
-    PerfCounter(context.system).increment("worker.finish")
+    PerfCounter(context.system).incCounter("worker.finish")
     context.stop(self)
   }
 }

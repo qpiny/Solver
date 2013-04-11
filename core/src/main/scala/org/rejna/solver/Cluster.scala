@@ -80,7 +80,7 @@ class Manager extends Actor with LoggingClass with ActorName {
       if (freq.length > 0) context.system.scheduler.schedule(2 seconds, freq, self, SendQueueSizeMessage())
 
     case SendQueueSizeMessage() =>
-      val queueSizeMessage = QueueSizeMessage(self, perf("queue.size").toInt) // + pc("worker.start").toInt - pc("worker.finish").toInt)
+      val queueSizeMessage = QueueSizeMessage(self, perf.getVariable("queue.size").intValue) // + pc("worker.start").toInt - pc("worker.finish").toInt)
       cluster.managers.keys.foreach(aref => aref ! queueSizeMessage)
 
     case QueueSizeMessage(managerRef, size) =>

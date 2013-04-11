@@ -90,12 +90,12 @@ abstract class StoreActor extends Actor with ActorName with LoggingClass with Co
   def receive = LoggingReceive(log) {
     case SaveMessage(requestor, value, children) =>
       requestor.getOrElse(sender) ! SavedMessage(save(value, children))
-      PerfCounter(context.system).increment("store.save")
+      PerfCounter(context.system).incCounter("store.save")
 
     case LoadMessage(requestor, id) =>
       val (value, children) = load(id)
       requestor.getOrElse(sender) ! LoadedMessage(id, value, children)
-      PerfCounter(context.system).increment("store.load")
+      PerfCounter(context.system).incCounter("store.load")
   }
 }
 

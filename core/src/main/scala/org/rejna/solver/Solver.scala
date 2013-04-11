@@ -3,6 +3,10 @@ package org.rejna.solver
 import org.apache.log4j.PropertyConfigurator
 import akka.actor._
 import akka.kernel.Bootable
+
+import scala.concurrent.{ Await, Promise }
+import scala.concurrent.duration._
+
 import com.typesafe.config.ConfigFactory
 import org.rejna.solver.cache.CheckCacheMessage
 import org.rejna.util.DynamicAccess
@@ -53,12 +57,19 @@ class StartActor extends Actor with ActorName with LoggingClass {
   }
 }
 
+object DefaultSystem {
+  private val promiseSystem = Promise[ActorSystem]
+  lazy val system = Await.result(promiseSystem.future, 10 seconds)
+  private[solver] def setSystem(s: ActorSystem): Unit = promiseSystem.success(s)
+}
+
 class BootableBase extends Bootable with LoggingClass {
   //PropertyConfigurator.configure("log4j.properties");
   val defaultConfig = ConfigFactory.load
   log.info(s"Starting Solver with profile ${this}")
   val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve
   val system = ActorSystem("solver", config)
+  DefaultSystem.setSystem(system)
   val cluster = Cluster(system)
 
   def startup = {
@@ -75,6 +86,8 @@ class BootableBase extends Bootable with LoggingClass {
         Some(ComputeMessage(starter, 0, rootNode)))
     }
   }
+  
+  def startConsole
 
   def shutdown = {
     system.shutdown

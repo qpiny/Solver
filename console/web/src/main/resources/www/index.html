@@ -8,50 +8,13 @@
 <script type="text/javascript" src="jquery-1.9.1.js"></script>
 <script type="text/javascript" src="jquery.websocket-0.0.1.js"></script>
 <script type="text/javascript" src="jquery.json-2.4.min.js"></script>
+<script type="text/javascript" src="ui/jquery-ui.js"></script>
 <script type="text/javascript" src="flot/jquery.flot.js"></script>
-<script type="text/javascript">
-	$(function() {
-		var data = []
-		var plot = $.plot("#randomGraph", {
-			label: "Random data from server",
-			data: data
-		}, {
-			series: {
-				shadowSize: 0	// Drawing is faster without shadows
-			},
-			yaxis: {
-				min: 0,
-				max: 255
-			},
-			xaxis: {
-				mode: "time",
-				timeformat: "%H:%M:%S",
-				minTickSize: [5, "second"]
-			}
-		});
-		var x = 0
-		var ws = $.websocket("ws://127.0.0.1:8888/websocket/", {
-			open : function() {
-				$('#log').append('\nsubscribe');
-				ws.send('subscribe');
-			},
-			events : {
-				data : function(e) {
-					$('#log').append('\n' + e.data.random1);
-					data.push([parseInt(e.data.timestamp), parseInt(e.data.random1)]);
-					plot.setData([data]);
-					plot.setupGrid();
-					plot.draw();
-				}
-			}
-
-		});
-	});
-</script>
+<script type="text/javascript" src="console.js"></script>
 </head>
 <body>
 	<h1>Solver Console !</h1>
-	<div id="randomGraph" class="graph"></div>
+	<div id="graphs"></div>
 	<br />
 	<textarea id="log" style="width: 500p"></textarea>
 </body>
