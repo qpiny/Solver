@@ -25,7 +25,7 @@ object Main extends App {
           staticHandler ! new StaticResourceRequest(request, "www/flot/" + file)
         case GET(PathSegments("ui" :: file :: Nil)) =>
           staticHandler ! new StaticResourceRequest(request, "www/ui/" + file)
-        case GET(Path(file)) => //actorSystem.actorOf(Props[StaticPage]) ! httpRequest
+        case GET(Path(file)) =>
           staticHandler ! new StaticResourceRequest(request, "www/" + file)
         case _ => request.response.write(HttpResponseStatus.BAD_REQUEST, "Invalid request")
       }
