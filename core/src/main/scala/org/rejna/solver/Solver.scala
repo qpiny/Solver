@@ -59,16 +59,26 @@ class StartActor extends Actor with ActorName with LoggingClass {
 
 object DefaultSystem {
   private val promiseConfig = Promise[Config]
-  lazy val system = ActorSystem("solver", Await.result(promiseConfig.future, 10 seconds))
-  private[solver] def setConfig(config: Config): Unit = promiseConfig.success(config)
+  lazy val system = {
+    println("Creating ActorSystem ...")
+    val as = ActorSystem("solver", config)
+    println("Creation of ActorSystem done")
+    as
+  }
+  lazy val config = Await.result(promiseConfig.future, 10 seconds)
+  def setConfig(c: Config): Unit = promiseConfig.success(c)
+  def isSet = promiseConfig.isCompleted
 }
 
 class BootableBase extends Bootable with LoggingClass {
   //PropertyConfigurator.configure("log4j.properties");
-  val defaultConfig = ConfigFactory.load
-  log.info(s"Starting Solver with profile ${this}")
-  val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve
-  DefaultSystem.setConfig(config)
+  if (!DefaultSystem.isSet) {
+	  val defaultConfig = ConfigFactory.load
+	  log.info(s"Starting Solver with profile ${this}")
+	  val config = defaultConfig.getConfig(getClass.getSimpleName.toLowerCase).withFallback(defaultConfig).resolve
+	  DefaultSystem.setConfig(config)
+  }
+  val config = DefaultSystem.config
   val system = DefaultSystem.system
   val cluster = Cluster(system)
 

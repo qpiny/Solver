@@ -1,7 +1,9 @@
-var Graph = function(placeholder, name, type, options) {
+var CounterGraph = function(placeholder, name, type, options) {
 	this.name = name;
 	this.type = type;
-	this.data = []
+	this.options = options;
+	this.data = [];
+	this.derive = [];
 	this.graphPlaceholder = $(document.createElement('div')).addClass('graph')
 	this.accordion = $(document.createElement('div')).append(
 			'<h3>' + name + '</h3>').append(this.graphPlaceholder);
@@ -13,45 +15,87 @@ var Graph = function(placeholder, name, type, options) {
 		heightStyle : 'content'
 	});
 	this.graph = $.plot(this.graphPlaceholder, {
-		label : name,
-		data : []
-	}, options);
+		label : this.name,
+		data : [ {
+			data : this.data,
+			label : "Data",
+			yaxis : 1
+		}, {
+			data : this.derive,
+			label : "Derive",
+			yaxis : 2
+		} ]
+	}, this.options);
 };
 
-Graph.prototype.isActive = function() {
-	return (this.accordion.accordion("option", "active") !== false)
-};
-
-Graph.prototype.addValue = function(timestamp, value) {
-	this.data.push([parseInt(timestamp), parseInt(value)]);
-	this.graph.setData([ this.data ]);
+CounterGraph.prototype.draw = function() {
+	// this.graph = $.plot(this.graphPlaceholder, {
+	// label : this.name,
+	// data : [ {
+	// data : this.data,
+	// label : "Data",
+	// yaxis : 1
+	// }, {
+	// data : this.derive,
+	// label : "Derive",
+	// yaxis : 2
+	// } ]
+	// }, this.options);
+	this.graph.setData([ {
+		data : this.data,
+		label : "Data",
+		yaxis : 1
+	}, {
+		data : this.derive,
+		label : "Derive",
+		yaxis : 2
+	} ]);
 	this.graph.setupGrid();
 	this.graph.draw();
 };
 
+CounterGraph.prototype.isActive = function() {
+	return (this.accordion.accordion("option", "active") !== false)
+};
+
+CounterGraph.prototype.addValue = function(timestamp, value) {
+	var ts = parseInt(timestamp);
+	var v = parseInt(value);
+	var l = this.data.length;
+	if (l > 0)
+		this.derive.push([ ts, v - this.data[l - 1][1] ]);
+	this.data.push([ ts, v ]);
+	this.draw();
+	// this.graph.setupGrid();
+	// this.graph.draw();
+};
+
 var GraphMgr = {
-	graphList: {},
-	
-	defaultOptions: {
+	graphList : {},
+
+	defaultOptions : {
 		series : {
 			shadowSize : 0
 		},
-		yaxis : {
-			min : 0,
-			max : 255
-		},
+		yaxis : [ {
+			min : 0
+		}, {
+			position : "right"
+		} ],
 		xaxis : {
 			mode : "time",
+			position : "bottom",
 			timeformat : "%H:%M:%S",
 			minTickSize : [ 5, "second" ]
 		}
 	},
-	
-	addGraph: function(name, type, options) {
-		this.graphList[name] = new Graph($('#graphs'), name, type, $.extend({}, this.defaultOptions, options));
+
+	addCounterGraph : function(name, options) {
+		this.graphList[name] = new CounterGraph($('#graphs'), name, type, $
+				.extend({}, this.defaultOptions, options));
 	},
 
-	addValue: function(name, timestamp, value) {
+	addValue : function(name, timestamp, value) {
 		var g = this.graphList[name];
 		if (g === undefined) {
 			this.addGraph(name);
@@ -62,52 +106,22 @@ var GraphMgr = {
 };
 
 $(function() {
-
-//	GraphMgr.addGraph("random", "no used yet", {
-//		series : {
-//			shadowSize : 0
-//		},
-//		yaxis : {
-//			min : 0,
-//			max : 255
-//		},
-//		xaxis : {
-//			mode : "time",
-//			timeformat : "%H:%M:%S",
-//			minTickSize : [ 5, "second" ]
-//		}
-//	});
-	
-	
-	/*
-	function update() {
-		GraphMgr.addValue("random", new Date().getTime(), Math.floor(Math.random() * 100));
-		setTimeout(update, 1000);
-	};
-	update();
-	*/
-
 	var ws = $.websocket("ws://localhost:8888/websocket/", {
 		open : function() {
-			$('#log').append('\nsubscribe');
-			ws.send('subscribe');
+			ws.send('MonitorSubscribe', [ '*' ]);
 		},
 		events : {
-			data : function(e) {
+			MonitorData : function(e) {
 				var timestamp = e.data.timestamp;
-				$.each(e.data, function(name, value) {
-					if (name != 'timestamp')
-						GraphMgr.addValue(name, timestamp, value);
+				$.each(e.data.counters, function(name, value) {
+					GraphMgr.addValue(name, timestamp, value);
 				});
-				//$('#log').append('\n' + e.data.random1);
-				// data.push([ parseInt(e.data.timestamp),
-				// parseInt(e.data.random1) ]);
-				// plot.setData([ data ]);
-				// plot.setupGrid();
-				// plot.draw();
-				
 			}
 		}
 
+	});
+
+	$('#start').click(function() {
+		ws.send('StartComputation')
 	});
 });

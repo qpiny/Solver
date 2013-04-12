@@ -48,6 +48,8 @@ object PerfCounter extends ExtensionId[PerfCounter] with ExtensionIdProvider {
   }
 }
 
+case class MonitoredValue(min: Long, current: Long, max: Long)
+
 class MonitoredVariable {
   private var value = 0L
   private var min = 0L
@@ -74,7 +76,7 @@ class MonitoredVariable {
   }
 
   def get = {
-    val r = (min, value, max)
+    val r = MonitoredValue(min, value, max)
     min = value
     max = value
     r

@@ -16,7 +16,7 @@ import com.typesafe.config.Config
 class MonitoredThreadPoolExecutor(config: Config, prerequisites: DispatcherPrerequisites) extends ExecutorServiceConfigurator(config, prerequisites) {
   //import ThreadPoolConfigBuilder.conf_?
 
-  def createExecutorServiceFactory(id: String, threadFactory: ThreadFactory): ExecutorServiceFactory ={
+  def createExecutorServiceFactory(id: String, threadFactory: ThreadFactory): ExecutorServiceFactory = {
     ThreadPoolConfigBuilder(ThreadPoolConfig())
       .setKeepAliveTime(Duration(config getMilliseconds "keep-alive-time", TimeUnit.MILLISECONDS))
       .setAllowCoreThreadTimeout(config getBoolean "allow-core-timeout")
@@ -44,10 +44,15 @@ case class MonitoredMailbox() extends MailboxType {
 
   def this(settings: ActorSystem.Settings, config: Config) = this()
 
-  final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue =
-    new MonitoredMailQueue(owner.map(_.path.name).getOrElse("UnknownActor"), new ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
+  final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue = {
+    val q = new ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
       final def queue: Queue[Envelope] = this
-    })
+    }
+    val ownerName = owner.map(_.path.name).getOrElse("UnknownActor")
+    if (ownerName == "/" || ownerName == "system" || ownerName == "user") q
+    else new MonitoredMailQueue(ownerName, q)
+  }
+
 }
 
 object WorkerComparator extends Comparator[Runnable] with LoggingClass {
@@ -64,7 +69,7 @@ object WorkerComparator extends Comparator[Runnable] with LoggingClass {
 
     if (wlen1 != wlen2)
       wlen2 - wlen1
-    else 
+    else
       wname2.compareTo(wname1)
   }
 }

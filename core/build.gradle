@@ -43,7 +43,7 @@ task generateFmppSources << {
 	ant.fmpp skipUnchanged: 'all', srcDir: 'src/main/fmpp', outputRoot: 'build/generated-sources/main/scala'
 }
 
-compileScala.dependsOn generateFmppSources
+//compileScala.dependsOn generateFmppSources
 sourceSets {
 	main { scala { srcDir 'build/generated-sources/main/scala' } }
 }
