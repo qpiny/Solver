@@ -10,6 +10,7 @@ run {
    if (!project.hasProperty('resume')) {
        delete fileTree(dir: 'data')
    }
+   maxHeapSize "1G"
 }
 
 repositories {

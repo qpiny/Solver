@@ -59,15 +59,17 @@ class StartActor extends Actor with ActorName with LoggingClass {
 
 object DefaultSystem {
   private val promiseConfig = Promise[Config]
+  private var _isSet = false
   lazy val system = {
     println("Creating ActorSystem ...")
     val as = ActorSystem("solver", config)
     println("Creation of ActorSystem done")
+    _isSet = true
     as
   }
   lazy val config = Await.result(promiseConfig.future, 10 seconds)
   def setConfig(c: Config): Unit = promiseConfig.success(c)
-  def isSet = promiseConfig.isCompleted
+  def isSet = _isSet
 }
 
 class BootableBase extends Bootable with LoggingClass {

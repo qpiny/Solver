@@ -91,18 +91,20 @@ class MonitoredThreadQueue(name: String, queue: BlockingQueue[Runnable]) extends
 }
 
 class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQueue with NamedMailQueue {
-  val monitoredSize = PerfCounter(DefaultSystem.system).getVariable(s"${name}.mailbox")
+  
+  lazy val _monitoredSize = PerfCounter(DefaultSystem.system).getVariable(s"${name}.mailbox")
+  def monitoredSize = if (DefaultSystem.isSet) Some(_monitoredSize) else None
 
   def enqueue(receiver: ActorRef, handle: Envelope) = {
     val e = queue.enqueue(receiver: ActorRef, handle: Envelope)
-    monitoredSize.inc()
+    for (m <- monitoredSize) m.inc()
     e
   }
 
   def dequeue() = {
     val e = queue.dequeue()
     if (e != null)
-      monitoredSize.dec()
+      for (m <- monitoredSize) m.dec()
     e
   }
   
@@ -112,7 +114,7 @@ class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQ
 
   def cleanUp(owner: ActorRef, deadLetters: MessageQueue) = {
     queue.cleanUp(owner, deadLetters)
-    monitoredSize.set(queue.numberOfMessages)
+    for (m <- monitoredSize) m.set(queue.numberOfMessages)
   }
 }
 

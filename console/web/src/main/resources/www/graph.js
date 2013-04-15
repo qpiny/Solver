@@ -1,7 +1,7 @@
-var CounterGraph = function(placeholder, name, options) {
+var Graph = function(placeholder, name, options) {
 	this.init(placeholder, name, options);
 }
-$.extend(CounterGraph.prototype, {
+$.extend(Graph.prototype, {
 	isActive : function() {
 		return (this.accordion.accordion("option", "active") !== false)
 	},
@@ -23,15 +23,37 @@ $.extend(CounterGraph.prototype, {
 	},
 
 	addValue : function(_timestamp, _value) {
-		var timestamp = parseInt(_timestamp);
-		var value = parseInt(_value);
 		var l = this.data.length;
-		if (l > 0) {
-			var previous = this.data[l - 1];
-			var deltats = 1000 / (timestamp - previous[0])
-			this.delta.push([ timestamp, (value - previous[1]) * deltats ]);
+		var timestamp = parseInt(_timestamp);
+		if (typeof _value == 'object' && 'current' in _value) {
+			var value = parseInt(_value.current);
+			var min = parseInt(_value.min);
+			var max = parseInt(_value.max);
+			var minerr = value - min;
+			var maxerr = max - value;
+			if (l > 0) {
+				var previous = this.data[l - 1];
+				var mindelta = (previous[1] + previous[3]) - min;
+				var maxdelta = max - (previous[1] - previous[2]);
+				var deltats = 1000 / (timestamp - previous[0]);
+				this.delta.push([ timestamp, (value - previous[1]) * deltats,
+						mindelta * deltats, maxdelta * deltats ]);
+			}
+			else
+				this.delta.push([ timestamp, 0, 0, 0 ]);
+			this.data.push([ timestamp, value, minerr, maxerr ]);
 		}
-		this.data.push([ timestamp, value ]);
+		else {
+			var value = parseInt(_value);
+			if (l > 0) {
+				var previous = this.data[l - 1];
+				var deltats = 1000 / (timestamp - previous[0])
+				this.delta.push([ timestamp, (value - previous[1]) * deltats ]);
+			}
+			else
+				this.delta.push([ timestamp, 0 ]);
+			this.data.push([ timestamp, value ]);
+		}
 		this.draw();
 	},
 
@@ -39,10 +61,24 @@ $.extend(CounterGraph.prototype, {
 		this.graph = $.plot(this.graphPlaceholder, {
 			label : this.name,
 			data : [ {
+				errorbars : 'y',
+				yerr : {
+					show : true,
+					upperCap : "-",
+					lowerCap : "-",
+					radius : 5
+				},
 				data : this.data,
 				label : "Data",
 				yaxis : 1
 			}, {
+				errorbars : 'y',
+				yerr : {
+					show : true,
+					upperCap : "-",
+					lowerCap : "-",
+					radius : 5
+				},
 				data : this.delta,
 				label : "Delta (/s)",
 				yaxis : 2
@@ -95,54 +131,3 @@ $.extend(CounterGraph.prototype, {
 var VariableGraph = function(placeholder, name, options) {
 	this.init(placeholder, name, options);
 };
-
-$.extend(VariableGraph.prototype, CounterGraph.prototype, {
-	create : function() {
-		this.graph = $.plot(this.graphPlaceholder, {
-			label : this.name,
-			data : [ {
-				errorbars : 'y',
-				yerr : {
-					show : true,
-					upperCap : "-",
-					lowerCap : "-",
-					radius : 5
-				},
-				data : this.data,
-				label : "Data",
-				yaxis : 1
-			}, {
-				errorbars : 'y',
-				yerr : {
-					show : true,
-					upperCap : "-",
-					lowerCap : "-",
-					radius : 5
-				},
-				data : this.delta,
-				label : "Delta (/s)",
-				yaxis : 2
-			} ]
-		}, this.options);
-	},
-
-	addValue : function(_timestamp, _value, _min, _max) {
-		var timestamp = parseInt(_timestamp);
-		var min = parseInt(_min);
-		var value = parseInt(_value);
-		var max = parseInt(_max);
-		var minerr = value - min;
-		var maxerr = max - value;
-		var l = this.data.length;
-		if (l > 0) {
-			var previous = this.data[l - 1];
-			var mindelta = (previous[1] + previous[3]) - min;
-			var maxdelta = max - (previous[1] - previous[2]);
-			var deltats = 1000 / (timestamp - previous[0]);
-			this.delta.push([ timestamp, (value - previous[1]) * deltats,
-					mindelta * deltats, maxdelta * deltats ]);
-		}
-		this.data.push([ timestamp, value, minerr, maxerr ]);
-		this.draw();
-	}
-});

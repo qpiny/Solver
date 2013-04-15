@@ -59,7 +59,7 @@ case class MonitoredMailbox(monitored: Boolean) extends MailboxType {
       val name = ownerName
       final def queue: Queue[Envelope] = this
     }
-    if (!monitored || ownerName == "/" || ownerName == "system" || ownerName == "user") q
+    if (!monitored) q // || ownerName == "/" || ownerName == "system" || ownerName == "user") q
     else new MonitoredMailQueue(ownerName, q)
   }
 

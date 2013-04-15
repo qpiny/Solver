@@ -3,24 +3,17 @@
 var GraphMgr = {
 	graphList : {},
 
-	addCounterGraph : function(name, options) {
-		this.graphList[name] = new CounterGraph($('#graphs'), name, options);
+	addGraph : function(name, options) {
+		this.graphList[name] = new Graph($('#graphs'), name, options);
 	},
 
-	addVariableGraph : function(name, options) {
-		this.graphList[name] = new VariableGraph($('#graphs'), name, options);
-	},
-
-	addValue : function(name, type, timestamp, value, min, max) {
+	addValue : function(name, timestamp, value) {
 		var g = this.graphList[name];
 		if (g === undefined) {
-			if (type === 'counter')
-				this.addCounterGraph(name);
-			else
-				this.addVariableGraph(name);
+			this.addGraph(name);
 			g = this.graphList[name];
 		}
-		g.addValue(timestamp, value, min, max);
+		g.addValue(timestamp, value);
 	}
 };
 
@@ -33,10 +26,10 @@ $(function() {
 			MonitorData : function(e) {
 				var timestamp = e.data.timestamp;
 				$.each(e.data.counters, function(name, value) {
-					GraphMgr.addValue(name, 'counter', timestamp, value);
+					GraphMgr.addValue(name, timestamp, value);
 				});
 				$.each(e.data.variables, function(name, data) {
-					GraphMgr.addValue(name, 'variable', timestamp, data.current, data.min, data.max)
+					GraphMgr.addValue(name, timestamp, data)
 				});
 			}
 		}

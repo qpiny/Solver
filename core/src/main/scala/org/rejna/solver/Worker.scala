@@ -84,12 +84,12 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
       store.save(self, result, children)
     }
   }
-
+*/
   override def onSaved(_id: Int) = {
     id = _id
     stop
   }
-*/
+  
   def receive = LoggingReceive(log) {
     // From parent : start computation
     case ComputeMessage(_requestor, _child, _node) =>
