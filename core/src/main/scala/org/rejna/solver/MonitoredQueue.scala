@@ -90,7 +90,7 @@ class MonitoredThreadQueue(name: String, queue: BlockingQueue[Runnable]) extends
   def peek = queue.peek  
 }
 
-class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQueue {//ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
+class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQueue with NamedMailQueue {
   val monitoredSize = PerfCounter(DefaultSystem.system).getVariable(s"${name}.mailbox")
 
   def enqueue(receiver: ActorRef, handle: Envelope) = {
@@ -115,6 +115,8 @@ class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQ
     monitoredSize.set(queue.numberOfMessages)
   }
 }
+
+trait NamedMailQueue { val name: String }
 
 class MonitoredPrioBlockingQueue(name: String) extends PrioBlockinkQueue {
   val monitoredPrio = PerfCounter(DefaultSystem.system).getVariable(s"${name}.prio")

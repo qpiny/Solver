@@ -40,16 +40,26 @@ class LifoBlockingQueue extends LinkedBlockingDeque[Runnable] with LoggingClass 
   override def offer(r: Runnable, timeout: Long, unit: TimeUnit) = offerFirst(r, timeout, unit)
 }
 
-case class MonitoredMailbox() extends MailboxType {
-
-  def this(settings: ActorSystem.Settings, config: Config) = this()
+case class MonitoredMailbox(monitored: Boolean) extends MailboxType {
+  
+  import collection.JavaConversions._
+  def this(settings: ActorSystem.Settings, config: Config) = {
+    this(config.hasPath("monitored") && config.getBoolean("monitored"))
+//    println("Mailbox config :")
+//    for (kv <- config.entrySet) {
+//      val k = kv.getKey
+//      val v = kv.getValue
+//      println(s"${k} : ${v.render}")
+//    }
+  }
 
   final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue = {
-    val q = new ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics {
+    val ownerName = owner.map(_.path.name).getOrElse("UnknownActor")
+    val q = new ConcurrentLinkedQueue[Envelope]() with QueueBasedMessageQueue with UnboundedMessageQueueSemantics with NamedMailQueue {
+      val name = ownerName
       final def queue: Queue[Envelope] = this
     }
-    val ownerName = owner.map(_.path.name).getOrElse("UnknownActor")
-    if (ownerName == "/" || ownerName == "system" || ownerName == "user") q
+    if (!monitored || ownerName == "/" || ownerName == "system" || ownerName == "user") q
     else new MonitoredMailQueue(ownerName, q)
   }
 
