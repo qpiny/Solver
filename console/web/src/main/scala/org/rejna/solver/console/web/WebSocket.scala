@@ -17,7 +17,7 @@ import WebSocketProtocol._
 
 import org.mashupbots.socko.events.WebSocketFrameEvent
 
-import org.rejna.solver.{ PerfCounter, StandAlone, MonitoredValue, DefaultSystem }
+import org.rejna.solver.{ Monitor, StandAlone, MonitoredValue, DefaultSystem }
 
 case class WSMessage(frame: WebSocketFrameEvent)
 case object SendData
@@ -26,12 +26,13 @@ sealed abstract class WebSocketMessage
 case object StartComputation extends WebSocketMessage
 case class MonitorSubscribe(filters: String*) extends WebSocketMessage
 case class MonitorUnsubscribe(filters: String*) extends WebSocketMessage
-case class MonitorData(timestamp: Long, counters: Map[String, Long], variables: Map[String, MonitoredValue]) extends WebSocketMessage
+case class MonitorData(timestamp: Long, counters: Map[String, Long], gauges: Map[String, MonitoredValue], memory: (Long, Long, Long)) extends WebSocketMessage
 
 
 class WebSocketHandler extends Actor {
   val subscribers = Set.empty[WebSocketFrameEvent]
-  val monitor = PerfCounter(DefaultSystem.system)
+  val monitor = Monitor(DefaultSystem.system)
+  val runtime = Runtime.getRuntime
 
   override def preStart = {
     context.system.scheduler.schedule(2 seconds, 1 seconds, self, SendData)(context.system.dispatcher)
@@ -53,8 +54,9 @@ class WebSocketHandler extends Actor {
       println("client registered")
     case SendData =>
       val counters = monitor.getCounters
-      val variables = monitor.getVariables
-      val data = MonitorData(new Date().getTime, counters, variables)
+      val gauges = monitor.getGauges
+
+      val data = MonitorData(new Date().getTime, counters, gauges, (runtime.freeMemory, runtime.totalMemory, runtime.maxMemory))
       lazy val cpuLoad = getCpuLoad
       for (s <- subscribers) {
         try {
@@ -62,15 +64,6 @@ class WebSocketHandler extends Actor {
             subscribers -= s
           } else {
             s.writeText(data.toJson.compactPrint)
-                
-//                
-//                JsObject(Map(
-//              "type" -> JsString("data"),
-//              "data" -> JsObject(Map(
-//                "timestamp" -> JsString(new Date().getTime.toString),
-//                "load" -> JsString(cpuLoad.toString),
-//                "random1" -> JsString((Random.nextInt & 0xff).toString),
-//                "random2" -> JsString((Random.nextInt & 0xff).toString))))).compactPrint)
           }
         } catch {
           case e: ClosedChannelException => // never happens, even if we write in closed channel

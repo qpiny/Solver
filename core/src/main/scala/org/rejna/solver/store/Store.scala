@@ -84,18 +84,20 @@ object Store extends ExtensionId[Store] with ExtensionIdProvider with LoggingCla
 }
 
 abstract class StoreActor extends Actor with ActorName with LoggingClass with ConfigurableClass {
+  lazy val monitor = Monitor(context.system)
+  
   def save(value: NodeValue, children: Array[Int]): Int
   def load(id: Int): (NodeValue, Array[Int])
 
   def receive = LoggingReceive(log) {
     case SaveMessage(requestor, value, children) =>
       requestor.getOrElse(sender) ! SavedMessage(save(value, children))
-      PerfCounter(context.system).incCounter("store.save")
+      monitor.incCounter("store.save")
 
     case LoadMessage(requestor, id) =>
       val (value, children) = load(id)
       requestor.getOrElse(sender) ! LoadedMessage(id, value, children)
-      PerfCounter(context.system).incCounter("store.load")
+      monitor.incCounter("store.load")
   }
 }
 

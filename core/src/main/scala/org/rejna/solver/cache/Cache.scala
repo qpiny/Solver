@@ -118,6 +118,7 @@ class CacheActor extends Actor with ActorName with LoggingClass {
   private lazy val nodes = Await.result(promiseNodes.future, 10 seconds)
   private val promiseValues = Promise[Map[Int, NodeValue]]
   private lazy val values = Await.result(promiseValues.future, 10 seconds)
+  private lazy val monitor = Monitor(context.system)
 
   def receive = LoggingReceive(log) {
     case InitCacheMessage(nodesBuilder, valuesBuilder, cacheId) =>
@@ -145,11 +146,11 @@ class CacheActor extends Actor with ActorName with LoggingClass {
       case None => // not in cache
         nodes.update(node, Right(requestor))
         requestor ! CacheMissMessage()
-        PerfCounter(context.system).incCounter("cache.miss")
+        monitor.incCounter("cache.miss")
 
       case Some(Right(worker)) => // node is being computed by worker
         worker ! CheckCacheMessage(requestor, node)
-        PerfCounter(context.system).incCounter("cache.forward")
+        monitor.incCounter("cache.forward")
 
       case Some(Left(id)) => // node id is in cache now check value cache
         values.get(id) match {
@@ -161,7 +162,7 @@ class CacheActor extends Actor with ActorName with LoggingClass {
           case Some(value) => // value is in cache
             requestor ! CacheHitMessage(id, value)
         }
-        PerfCounter(context.system).incCounter("cache.hit")
+        monitor.incCounter("cache.hit")
     }
   }
 }

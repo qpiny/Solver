@@ -9,19 +9,7 @@ import org.rejna.solver.MonitoredValue
 
 object WebSocketProtocol extends DefaultJsonProtocol {
   implicit object WebSocketFormat extends RootJsonReader[WebSocketMessage] {
-    //    def write(m: WebSocketMessage) = m match {
-    //      case StartComputation =>
-    //        JsObject(Map("format" -> JsString("StartComputation")))
-    //      case MonitorSubscribe(filters @ _*) =>
-    //        JsObject(
-    //          "type" -> JsString("MonitorSubscribe"),
-    //          "data" -> JsArray(filters.map(JsString(_)): _*))
-    //      case MonitorUnsubscribe(filters @ _*) =>
-    //        JsObject(
-    //          "format" -> JsString("MonitorUnsubscribe"),
-    //          "data" -> JsArray(filters.map(JsString(_)): _*))
-    //    }
-
+    
     def toStrList(values: List[JsValue]) = values map {
       _ match {
         case JsString(s) => s
@@ -63,6 +51,7 @@ object WebSocketProtocol extends DefaultJsonProtocol {
       "data" -> JsObject(
         "timestamp" -> JsNumber(d.timestamp),
         "counters" -> d.counters.toJson,
-        "variables" -> d.variables.toJson))
+        "variables" -> d.gauges.toJson,
+        "memory" -> d.memory.toJson))
   }
 }

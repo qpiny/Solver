@@ -7,7 +7,7 @@ import akka.actor.ActorRef
 import akka.dispatch.{ MessageQueue, Envelope }
 
 class MonitoredThreadQueue(name: String, queue: BlockingQueue[Runnable]) extends BlockingQueue[Runnable] {
-  val monitoredSize = PerfCounter(DefaultSystem.system).getVariable(s"${name}.queue")
+  val monitoredSize = Monitor(DefaultSystem.system).getGauge(s"${name}.queue")
   
   def add(r: Runnable) = {
     queue.add(r)
@@ -92,7 +92,7 @@ class MonitoredThreadQueue(name: String, queue: BlockingQueue[Runnable]) extends
 
 class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQueue with NamedMailQueue {
   
-  lazy val _monitoredSize = PerfCounter(DefaultSystem.system).getVariable(s"${name}.mailbox")
+  lazy val _monitoredSize = Monitor(DefaultSystem.system).getGauge(s"${name}.mailbox")
   def monitoredSize = if (DefaultSystem.isSet) Some(_monitoredSize) else None
 
   def enqueue(receiver: ActorRef, handle: Envelope) = {
@@ -121,7 +121,7 @@ class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQ
 trait NamedMailQueue { val name: String }
 
 class MonitoredPrioBlockingQueue(name: String) extends PrioBlockinkQueue {
-  val monitoredPrio = PerfCounter(DefaultSystem.system).getVariable(s"${name}.prio")
+  val monitoredPrio = Monitor(DefaultSystem.system).getGauge(s"${name}.prio")
   
   private def update(r: Runnable): Runnable = {
     r.getClass.getMethod("messageQueue").invoke(r) match {

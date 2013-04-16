@@ -9,12 +9,18 @@
 <script type="text/javascript" src="jquery.json-2.4.min.js"></script>
 <script type="text/javascript" src="ui/jquery-ui.js"></script>
 <script type="text/javascript" src="flot/jquery.flot.js"></script>
+<!--
+<script type="text/javascript" src="flot/jquery.flot.JUMlib.js"></script>
+<script type="text/javascript" src="flot/jquery.flot.candlestick.js"></script>
+ -->
+ <script type="text/javascript" src="flot/jquery.flot.fillarea.js"></script>
 <script type="text/javascript" src="graph.js"></script>
 <script type="text/javascript" src="console.js"></script>
 </head>
 <body>
 	<h1>Solver Console !</h1>
 	<input type="button" id="start" value="start" />
+	<div id="memory" class="graph"></div>
 	<div id="graphs"></div>
 	<br />
 	<textarea id="log" style="width: 500p"></textarea>

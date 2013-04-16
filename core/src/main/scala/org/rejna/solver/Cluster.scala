@@ -57,7 +57,7 @@ trait ClusterMember {
 // This actor is the manager of a node (member of a cluster)
 class Manager extends Actor with LoggingClass with ActorName {
   val cluster = Cluster(context.system)
-  val perf = PerfCounter(context.system)
+  val monitor = Monitor(context.system)
   implicit val execCtx = context.system.dispatcher
 
   override val supervisorStrategy = new SupervisorStrategy {
@@ -80,7 +80,7 @@ class Manager extends Actor with LoggingClass with ActorName {
       if (freq.length > 0) context.system.scheduler.schedule(2 seconds, freq, self, SendQueueSizeMessage())
 
     case SendQueueSizeMessage() =>
-      val queueSizeMessage = QueueSizeMessage(self, perf.getVariable("queue.size").intValue) // + pc("worker.start").toInt - pc("worker.finish").toInt)
+      val queueSizeMessage = QueueSizeMessage(self, monitor.getGauge("queue.size").intValue) // + pc("worker.start").toInt - pc("worker.finish").toInt)
       cluster.managers.keys.foreach(aref => aref ! queueSizeMessage)
 
     case QueueSizeMessage(managerRef, size) =>
