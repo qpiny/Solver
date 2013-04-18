@@ -52,6 +52,12 @@ object WebSocketProtocol extends DefaultJsonProtocol {
         "timestamp" -> JsNumber(d.timestamp),
         "counters" -> d.counters.toJson,
         "variables" -> d.gauges.toJson,
-        "memory" -> d.memory.toJson))
+        "system" -> JsObject(
+            "freeMemory" -> JsNumber(d.system.freeMemory),
+            "totalMemory" -> JsNumber(d.system.totalMemory),
+            "maxMemory" -> JsNumber(d.system.maxMemory),
+            "cpuLoad" -> JsNumber(d.system.cpuLoad),
+            "cpuCount" -> JsNumber(d.system.cpuCount),
+            "gcTime" -> JsNumber(d.system.gcTime))))
   }
 }

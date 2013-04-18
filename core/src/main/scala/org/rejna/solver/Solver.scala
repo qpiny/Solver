@@ -3,6 +3,7 @@ package org.rejna.solver
 import org.apache.log4j.PropertyConfigurator
 import akka.actor._
 import akka.kernel.Bootable
+import akka.event.{ Logging, LoggingAdapter }
 
 import scala.concurrent.{ Await, Promise }
 import scala.concurrent.duration._
@@ -21,15 +22,15 @@ trait ActorName { me: Actor with LoggingClass =>
 
 trait LoggingClass {
   //Self: { val system: ActorSystem } =>
-  //lazy val log = Logging(system, getClass.getName)
+  //lazy val log = Logging(DefaultSystem.system, getClass.getName)
   lazy val log = org.slf4j.LoggerFactory.getLogger(this.getClass)
 }
 
 object LoggingReceive {
-  def apply(log: org.slf4j.Logger)(receive: Actor.Receive) = new PartialFunction[Any, Unit] {
+  def apply(log: org.slf4j.Logger/* LoggingAdapter */)(receive: Actor.Receive) = new PartialFunction[Any, Unit] {
     def isDefinedAt(m: Any) = receive.isDefinedAt(m)
     def apply(m: Any) = {
-      log.trace(s"Receive ${m}")
+      log.debug(s"Receive ${m}")
       receive(m)
     }
   }
