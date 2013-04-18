@@ -22,21 +22,16 @@ $(function() {
 	}, {
 		label : "Total memory",
 		data : []
-	}, {
-		label : "Max memory",
-		data : []
 	} ];
 	updateMemoryGraph = function(timestamp, mem) {
 		memoryData[0].data.push([ timestamp, mem[0] ]);
 		memoryData[1].data.push([ timestamp, mem[1] ]);
-		memoryData[2].data.push([ timestamp, mem[2] ]);
 
 		$.plot($('#memory'), memoryData, {
 			series : {
-				stack : true,
 				lines : {
 					show : true,
-					fill : true
+					fill : false
 				}
 			},
 			xaxis : {
