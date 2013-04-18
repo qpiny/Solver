@@ -61,57 +61,65 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   /* init slots */
   val slots = Array.ofDim[Slot](2, 7)
 
-  (0 to 6).foreach(i => {
-    val (fs, ss) = if (i == 6) {
-      val s = (new ScoreSlot(First, first_beads(i)), new ScoreSlot(Second, second_beads(i)))
-      s._1.oppositeSlot = s._1
-      s._2.oppositeSlot = s._2
-      s
-    } else
-      (new Slot(First, first_beads(i)), new Slot(Second, second_beads(i)))
-    if (i != 0) {
-      slots(0)(i - 1).nextSlot_=(fs)
-      slots(1)(i - 1).nextSlot_=(ss)
-    }
-    slots(0)(i) = fs
-    slots(1)(i) = ss
-  })
+  slots(0)(6) = new ScoreSlot(First, first_beads(6))
+  slots(1)(6) = new ScoreSlot(Second, second_beads(6))
+  slots(0)(6).oppositeSlot = slots(1)(6)
+  slots(1)(6).oppositeSlot = slots(0)(6)
+  
+  for (i <- (5 to 0 by -1)) {
+    slots(0)(i) = new Slot(First, first_beads(i))
+    slots(1)(i) = new Slot(Second, second_beads(i))
+    slots(0)(i).nextSlot = slots(0)(i + 1)
+    slots(1)(i).nextSlot = slots(1)(i + 1)
+  }
   (0 to 5).foreach(i => {
     slots(0)(i).oppositeSlot = slots(1)(5 - i)
     slots(1)(5 - i).oppositeSlot = slots(0)(i)
   })
 
-  slots(0)(6).nextSlot_=(slots(1)(0))
-  slots(1)(6).nextSlot_=(slots(0)(0))
+  slots(0)(6).nextSlot = slots(1)(0)
+  slots(1)(6).nextSlot = slots(0)(0)
 
   def this(g: Game) = this(g.slots(0).map(_.nbeads), g.slots(1).map(_.nbeads), g.player)
   def this(s: Array[Array[Int]]) = this(s(0), s(1))
   def this(s: Array[Int]) = this(s.take(7), s.takeRight(7))
   def this(i: Int) = this(Array(i, i, i, i, i, i, 0), Array(i, i, i, i, i, i, 0))
   def this() = this(4)
+  
+  def debug = {
+    println(this)
+    for (i <- (0 to 6)) println(s"First : ${i} -> ${slots(0)(i)} next(f): ${slots(0)(i).nextSlot(First)} next(s): ${slots(0)(i).nextSlot(Second)} opposite: ${slots(0)(i).oppositeSlot}")
+    for (i <- (0 to 6)) println(s"Second : ${i} -> ${slots(1)(i)} next(f): ${slots(1)(i).nextSlot(First)} next(s): ${slots(1)(i).nextSlot(Second)} opposite: ${slots(1)(i).oppositeSlot}")
+  }
 
   def do_play(i: Int): Action = {
+    if (i < 0 || i > 5)
+      return InvalidMove
+      
     var slot = slots(player.id)(i)
 
     if (slot.nbeads == 0)
       return InvalidMove
 
-    (0 until slot.empty).foreach(i => {
+    val nbeads = slot.empty
+    for (i <- (0 until nbeads)) {
       slot = slot.nextSlot(player)
       slot.nbeads += 1
-    })
+    }
 
     /* capture */
-    if (slot.nbeads == 1 && slot.owner == player && !slot.isInstanceOf[ScoreSlot] && slot.oppositeSlot.nbeads != 0)
+    if (slot.nbeads == 1 && slot.owner == player && !slot.isInstanceOf[ScoreSlot] && slot.oppositeSlot.nbeads != 0) {
+      println("Capture !")
       slots(player.id)(6).nbeads += slot.oppositeSlot.empty + slot.empty
+    }
 
     /* game over ? */
-    (0 to 1).foreach(i => {
+    for (i <- (0 to 1)) {
       if (!slots(i).exists(s => s.nbeads > 0 && !s.isInstanceOf[ScoreSlot])) {
         slots(i ^ 1)(6).nbeads = slots(i ^ 1).foldLeft(0)((score, slot) => score + slot.empty)
         return winner
       }
-    })
+    }
 
     /* play again */
     if (slot.isInstanceOf[ScoreSlot])
@@ -165,7 +173,7 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     (0 to 5).foreach(i => sb.append(slots(1)(i).nbeads).append(" "))
     sb.append("[%1$02d]".format(slots(1)(6).nbeads))
     sb.append("\n")
-    sb.append(children.zipWithIndex.filter(_._1.isDefined).map(_._2).mkString("(", ",", ")"))
+    //sb.append(children.zipWithIndex.filter(_._1.isDefined).map(_._2).mkString("(", ",", ")"))
     sb.toString
   }
 

@@ -16,7 +16,6 @@ run {
 configurations {
 	fmpp
 	scalaStyle
-	deployerJars
 }
 
 dependencies {
@@ -34,7 +33,7 @@ dependencies {
 	//compile group: 'org.scala-tools.sbinary', name:'sbinary_' + majorScalaVersion, version: '0.4.1'
 	fmpp group: 'net.sourceforge.fmpp', name: 'fmpp', version: '0.9.14'
 	scalaStyle group: 'org.scalastyle', name: 'scalastyle-batch_2.9.2', version: '0.2.0'
-	deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '2.2'
+	testCompile group: 'org.scalatest', name: 'scalatest_' + majorScalaVersion, version: '2.0.M5b'
 }
 
 task generateFmppSources << {
@@ -57,13 +56,18 @@ task scalaStyle(type: JavaExec) {
 	]
 }
 
-//tasks.withType(ScalaCompile) {
-//	scalaCompileOptions.fork = true
-//    scalaCompileOptions.unchecked = true
-//    scalaCompileOptions.deprecation = true
-//
-//    configure(scalaCompileOptions.forkOptions) {
-//        memoryMaximumSize = '1g'
-//        jvmArgs = ['-XX:MaxPermSize=512m']
-//    }
-//}
+task scalatest(dependsOn: compileTestScala) << {
+	ant.taskdef(
+		name: 'scalatest',
+		classname: 'org.scalatest.tools.ScalaTestAntTask',
+		//classpath: configurations.testCompile.asPath
+		classpath: sourceSets.test.runtimeClasspath.asPath 
+	)
+	ant.scalatest(
+		runpath: sourceSets.test.compileClasspath,
+		haltonfailure: 'true',
+		fork: 'false',
+		suite: 'org.rejna.solver.mancala.MancalaTest'
+	)
+	{ reporter(type: 'stdout') } 
+}

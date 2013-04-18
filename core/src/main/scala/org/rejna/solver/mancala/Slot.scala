@@ -14,6 +14,8 @@ class Slot(val owner: Player, var nbeads: Int) extends Serializable {
 
   def nextSlot_=(slot: Slot) = nextSlotPromise.success(slot)
 
+  def nextSlot = sys.error("not supported")
+  
   def nextSlot(player: Player) = {
     if (lastSlot && player != owner)
       _nextSlot._nextSlot
@@ -38,6 +40,8 @@ class Slot(val owner: Player, var nbeads: Int) extends Serializable {
   }
 
   override def hashCode = nbeads.hashCode
+  
+  override def toString = nbeads.toString
 }
 
 class ScoreSlot(owner: Player, nbeads: Int) extends Slot(owner, nbeads)
