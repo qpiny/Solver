@@ -27,18 +27,15 @@ $(function() {
 	var cpuData = [ {
 		label : "CPU load",
 		data : []
-<<<<<<< HEAD
-	} ];
-	updateMemoryGraph = function(timestamp, mem) {
-		memoryData[0].data.push([ timestamp, mem[0] ]);
-		memoryData[1].data.push([ timestamp, mem[1] ]);
-=======
 	}, {
 		label : "GC load",
 		data : []
 	} ];
-	
-	var previousGC = { ts: 0, load: 0 };
+
+	var previousGC = {
+		ts : 0,
+		load : 0
+	};
 
 	updateSystemGraph = function(_timestamp, system) {
 		var timestamp = parseInt(_timestamp);
@@ -47,20 +44,14 @@ $(function() {
 
 		memoryData[0].data.push([ timestamp, totalMemory - freeMemory ]);
 		memoryData[1].data.push([ timestamp, freeMemory ]);
->>>>>>> edaf68b45bf170ef79b303f1c5f0b0a27fbab0ce
 
 		$.plot($('#memory'), memoryData, {
 			series : {
 				lines : {
 					show : true,
-<<<<<<< HEAD
-					fill : false
-				}
-=======
 					fill : true,
 				},
-				shadowSize: 0
->>>>>>> edaf68b45bf170ef79b303f1c5f0b0a27fbab0ce
+				shadowSize : 0
 			},
 			xaxis : {
 				mode : "time",
@@ -79,7 +70,10 @@ $(function() {
 
 		if (cpuLoad >= 0)
 			cpuData[0].data.push([ timestamp, cpuLoad / cpuCount ]);
-		cpuData[1].data.push([ timestamp, (gcTime - previousGC.load) / (timestamp - previousGC.ts) / cpuCount ])
+		cpuData[1].data.push([
+				timestamp,
+				(gcTime - previousGC.load) / (timestamp - previousGC.ts)
+						/ cpuCount ])
 		previousGC.ts = timestamp;
 		previousGC.load = gcTime;
 		$.plot($('#cpu'), cpuData, {
