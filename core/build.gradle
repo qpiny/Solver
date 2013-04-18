@@ -34,6 +34,7 @@ dependencies {
 	fmpp group: 'net.sourceforge.fmpp', name: 'fmpp', version: '0.9.14'
 	scalaStyle group: 'org.scalastyle', name: 'scalastyle-batch_2.9.2', version: '0.2.0'
 	testCompile group: 'org.scalatest', name: 'scalatest_' + majorScalaVersion, version: '2.0.M5b'
+	testCompile group: 'org.scalacheck', name: 'scalacheck_' + majorScalaVersion, version: '1.10.1'
 }
 
 task generateFmppSources << {

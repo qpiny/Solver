@@ -79,7 +79,7 @@ class GameStat extends NodeValue {
   }
 
   def this(p: Player, first: Int, second: Int) {
-    this
+    this()
     player = p
     if (first + second == 48) {
       init = true
@@ -93,7 +93,6 @@ class GameStat extends NodeValue {
         fwinner_path = true
         fwinner_count = 1
       } else {
-        smin_depth_depth = 0
         swinner_path = true
         swinner_count = 1
       }
@@ -120,7 +119,7 @@ class GameStat extends NodeValue {
     bs
   }
 
-  def update(nv: NodeValue) = synchronized {
+  def update(nv: NodeValue) = {
     val gs = nv.asInstanceOf[GameStat]
     if (gs.init) {
       if (!init) {

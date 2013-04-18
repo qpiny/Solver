@@ -40,8 +40,7 @@ object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
             } else
               overflow = true
             15
-          }
-          else {
+          } else {
             nbeads
           }
           bs.add(n, 4)
@@ -65,7 +64,7 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   slots(1)(6) = new ScoreSlot(Second, second_beads(6))
   slots(0)(6).oppositeSlot = slots(1)(6)
   slots(1)(6).oppositeSlot = slots(0)(6)
-  
+
   for (i <- (5 to 0 by -1)) {
     slots(0)(i) = new Slot(First, first_beads(i))
     slots(1)(i) = new Slot(Second, second_beads(i))
@@ -85,17 +84,11 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   def this(s: Array[Int]) = this(s.take(7), s.takeRight(7))
   def this(i: Int) = this(Array(i, i, i, i, i, i, 0), Array(i, i, i, i, i, i, 0))
   def this() = this(4)
-  
-  def debug = {
-    println(this)
-    for (i <- (0 to 6)) println(s"First : ${i} -> ${slots(0)(i)} next(f): ${slots(0)(i).nextSlot(First)} next(s): ${slots(0)(i).nextSlot(Second)} opposite: ${slots(0)(i).oppositeSlot}")
-    for (i <- (0 to 6)) println(s"Second : ${i} -> ${slots(1)(i)} next(f): ${slots(1)(i).nextSlot(First)} next(s): ${slots(1)(i).nextSlot(Second)} opposite: ${slots(1)(i).oppositeSlot}")
-  }
 
   def do_play(i: Int): Action = {
     if (i < 0 || i > 5)
       return InvalidMove
-      
+
     var slot = slots(player.id)(i)
 
     if (slot.nbeads == 0)
