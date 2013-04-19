@@ -37,7 +37,6 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
     stop
   }
 
-/* SYNC *************/
   override def onMiss() = {
     log.info(s"${this}: Cache miss, starting children workers")
     val nodeChildren = node.children
@@ -57,34 +56,6 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
     }
   }
 
-/* ASYNC *************
-  override def onMiss() = {
-    //log.debug(s"${this}: Cache miss, starting children workers")
-    val nodeChildren = node.children
-    children = Array.fill[Int](nodeChildren.size)(-1)
-    val futureChildrenRefs = nodeChildren.toList.zipWithIndex.map({ on_i =>
-      on_i match {
-        case (Some(n), i) =>
-	        count += 1
-	        Some(cluster.enqueueActorCreation(
-            self,
-            self.path.elements.last + "," + i.toString(),
-            classOf[Worker],
-            "worker-dispatcher",
-            Some(ComputeMessage(self, i, n))))
-                  case (None, _) => None
-      }
-    }).flatten
-    
-    if (count > 0) { // futureChildrenRefs.size > 0
-      val firstCompleted = Future.firstCompletedOf(futureChildrenRefs)(context.system.dispatcher)
-      Await.ready(firstCompleted, 30 seconds)
-    }
-    else {
-      store.save(self, result, children)
-    }
-  }
-*/
   override def onSaved(_id: Int) = {
     id = _id
     stop

@@ -7,7 +7,6 @@ import org.rejna.solver.TreeCompanion
 import org.rejna.solver.serializer.SolverMessage
 import org.rejna.solver.serializer.SolverProtocol
 import org.rejna.util.{ BitStreamReader, BitStreamWriter }
-import org.rejna.solver.mancala.Player._
 import org.rejna.solver.mancala.Action._
 
 object GameStat extends TreeCompanion[GameStat] with SolverMessage {
@@ -32,90 +31,88 @@ object GameStat extends TreeCompanion[GameStat] with SolverMessage {
     SolverProtocol.registerFormat(classOf[GameStat], GameStatFormat)
 }
 
-class GameStat extends NodeValue {
-  var init = false
-  var fmax_score_score = 0
-  var fmax_score_depth = 0
-  var fmax_depth_score = 0
-  var fmax_depth_depth = 0
-  var fmin_depth_score = 0
-  var fmin_depth_depth = 0
-  var fwinner_path = false
-  var fwinner_count = 0
-  var smax_score_score = 0
-  var smax_score_depth = 0
-  var smax_depth_score = 0
-  var smax_depth_depth = 0
-  var smin_depth_score = 0
-  var smin_depth_depth = 0
-  var swinner_path = false
-  var swinner_count = 0
-  var player: Player = First
+class GameStat(
+  var init: Boolean = false,
+  var fmaxScoreScore: Int = 0,
+  var fmaxScoreDepth: Int = 0,
+  var fmaxDepthScore: Int = 0,
+  var fmaxDepthDepth: Int = 0,
+  var fminDepthScore: Int = 0,
+  var fminDepthDepth: Int = 0,
+  var fwinnerPath: Boolean = false,
+  var fwinnerCount: Int = 0,
+  var smaxScoreScore: Int = 0,
+  var smaxScoreDepth: Int = 0,
+  var smaxDepthScore: Int = 0,
+  var smaxDepthDepth: Int = 0,
+  var sminDepthScore: Int = 0,
+  var sminDepthDepth: Int = 0,
+  var swinnerPath: Boolean = false,
+  var swinnerCount: Int = 0,
+  var player: Player = FirstPlayer) extends NodeValue {
 
-  def this(bs: BitStreamReader) = {
-    this
-    init = true
-    fmax_score_score = bs.get(6)
-    fmax_score_depth = bs.get(7)
-    fmax_depth_score = bs.get(6)
-    fmax_depth_depth = bs.get(7)
-    fmin_depth_score = bs.get(6)
-    fmin_depth_depth = bs.get(7)
-    fwinner_path = bs.get(1) == 1
-    fwinner_count = bs.get(24)
+  def this(bs: BitStreamReader) =
+    this(init = true,
+      fmaxScoreScore = bs.get(6),
+      fmaxScoreDepth = bs.get(7),
+      fmaxDepthScore = bs.get(6),
+      fmaxDepthDepth = bs.get(7),
+      fminDepthScore = bs.get(6),
+      fminDepthDepth = bs.get(7),
+      fwinnerPath = bs.get(1) == 1,
+      fwinnerCount = bs.get(24),
 
-    smax_score_score = bs.get(6)
-    smax_score_depth = bs.get(7)
-    smax_depth_score = bs.get(6)
-    smax_depth_depth = bs.get(7)
-    smin_depth_score = bs.get(6)
-    smin_depth_depth = bs.get(7)
-    swinner_path = bs.get(1) == 1
-    swinner_count = bs.get(24)
-  }
+      smaxScoreScore = bs.get(6),
+      smaxScoreDepth = bs.get(7),
+      smaxDepthScore = bs.get(6),
+      smaxDepthDepth = bs.get(7),
+      sminDepthScore = bs.get(6),
+      sminDepthDepth = bs.get(7),
+      swinnerPath = bs.get(1) == 1,
+      swinnerCount = bs.get(24),
+      player = FirstPlayer)
 
   def this(bin: Array[Byte]) = {
     this(new BitStreamReader(bin: _*))
   }
 
   def this(p: Player, first: Int, second: Int) {
-    this()
-    player = p
+    this(player = p)
     if (first + second == 48) {
       init = true
-      fmax_score_score = first
-      fmax_depth_score = first
-      fmin_depth_score = first
-      smax_score_score = second
-      smax_depth_score = second
-      smin_depth_score = second
+      fmaxScoreScore = first
+      fmaxDepthScore = first
+      fminDepthScore = first
+      smaxScoreScore = second
+      smaxDepthScore = second
+      sminDepthScore = second
       if (first > second) {
-        fwinner_path = true
-        fwinner_count = 1
+        fwinnerPath = true
+        fwinnerCount = 1
       } else {
-        swinner_path = true
-        swinner_count = 1
+        swinnerPath = true
+        swinnerCount = 1
       }
     }
   }
 
   def pushInBitStream(bs: BitStreamWriter): BitStreamWriter = { /* 16 bytes long */
-    bs.add(fmax_score_score, 6)
-    bs.add(fmax_score_depth, 7)
-    bs.add(fmax_depth_score, 6)
-    bs.add(fmax_depth_depth, 7)
-    bs.add(fmin_depth_score, 6)
-    bs.add(fmin_depth_depth, 7)
-    bs.add(if (fwinner_path) 1 else 0, 1)
-    bs.add(fwinner_count, 24)
-    bs.add(smax_score_score, 6)
-    bs.add(smax_score_depth, 7)
-    bs.add(smax_depth_score, 6)
-    bs.add(smax_depth_depth, 7)
-    bs.add(smin_depth_score, 6)
-    bs.add(smin_depth_depth, 7)
-    bs.add(if (swinner_path) 1 else 0, 1)
-    bs.add(swinner_count, 24)
+    bs.add(fmaxScoreScore, 6)
+    bs.add(fmaxScoreDepth, 7)
+    bs.add(fmaxDepthScore, 6)
+    bs.add(fmaxDepthDepth, 7)
+    bs.add(fminDepthScore, 6)
+    bs.add(fminDepthDepth, 7)
+    bs.add(if (fwinnerPath) 1 else 0, 1)
+    bs.add(fwinnerCount, 24)
+    bs.add(smaxScoreScore, 6)
+    bs.add(smaxScoreDepth, 7)
+    bs.add(smaxDepthScore, 6)
+    bs.add(smaxDepthDepth, 7)
+    bs.add(sminDepthScore, 6)
+    bs.add(sminDepthDepth, 7)
+    bs.add(if (swinnerPath) 1 else 0, 1)
+    bs.add(swinnerCount, 24)
     bs
   }
 
@@ -124,65 +121,89 @@ class GameStat extends NodeValue {
     if (gs.init) {
       if (!init) {
         init = true
-        fmax_score_score = gs.fmax_score_score
-        fmax_score_depth = gs.fmax_score_depth + 1
-        fmax_depth_score = gs.fmax_depth_score
-        fmax_depth_depth = gs.fmax_depth_depth + 1
-        fmin_depth_score = gs.fmin_depth_score
-        fmin_depth_depth = gs.fmin_depth_depth + 1
-        fwinner_path = gs.fwinner_path
-        fwinner_count = gs.fwinner_count
-        smax_score_score = gs.smax_score_score
-        smax_score_depth = gs.smax_score_depth + 1
-        smax_depth_score = gs.smax_depth_score
-        smax_depth_depth = gs.smax_depth_depth + 1
-        smin_depth_score = gs.smin_depth_score
-        smin_depth_depth = gs.smin_depth_depth + 1
-        swinner_path = gs.swinner_path
-        swinner_count = gs.swinner_count
+        fmaxScoreScore = gs.fmaxScoreScore
+        fmaxScoreDepth = gs.fmaxScoreDepth + 1
+        fmaxDepthScore = gs.fmaxDepthScore
+        fmaxDepthDepth = gs.fmaxDepthDepth + 1
+        fminDepthScore = gs.fminDepthScore
+        fminDepthDepth = gs.fminDepthDepth + 1
+        fwinnerPath = gs.fwinnerPath
+        fwinnerCount = gs.fwinnerCount
+        smaxScoreScore = gs.smaxScoreScore
+        smaxScoreDepth = gs.smaxScoreDepth + 1
+        smaxDepthScore = gs.smaxDepthScore
+        smaxDepthDepth = gs.smaxDepthDepth + 1
+        sminDepthScore = gs.sminDepthScore
+        sminDepthDepth = gs.sminDepthDepth + 1
+        swinnerPath = gs.swinnerPath
+        swinnerCount = gs.swinnerCount
       } else {
-        if (fmax_score_score < gs.fmax_score_score) {
-          fmax_score_score = gs.fmax_score_score
-          fmax_score_depth = gs.fmax_score_depth + 1
+        if (fmaxScoreScore < gs.fmaxScoreScore) {
+          fmaxScoreScore = gs.fmaxScoreScore
+          fmaxScoreDepth = gs.fmaxScoreDepth + 1
         }
-        if (fmax_depth_depth < gs.fmax_depth_depth + 1) {
-          fmax_depth_depth = gs.fmax_depth_depth + 1
-          fmax_depth_score = gs.fmax_depth_score
+        if (fmaxDepthDepth < gs.fmaxDepthDepth + 1) {
+          fmaxDepthDepth = gs.fmaxDepthDepth + 1
+          fmaxDepthScore = gs.fmaxDepthScore
         }
-        if (fmin_depth_depth > gs.fmin_depth_depth + 1) {
-          fmin_depth_depth = gs.fmin_depth_depth + 1
-          fmin_depth_score = gs.fmin_depth_score
+        if (fminDepthDepth > gs.fminDepthDepth + 1) {
+          fminDepthDepth = gs.fminDepthDepth + 1
+          fminDepthScore = gs.fminDepthScore
         }
-        fwinner_count += gs.fwinner_count
+        fwinnerCount += gs.fwinnerCount
 
-        if (smax_score_score < gs.smax_score_score) {
-          smax_score_score = gs.smax_score_score
-          smax_score_depth = gs.smax_score_depth + 1
+        if (smaxScoreScore < gs.smaxScoreScore) {
+          smaxScoreScore = gs.smaxScoreScore
+          smaxScoreDepth = gs.smaxScoreDepth + 1
         }
-        if (smax_depth_depth < gs.smax_depth_depth + 1) {
-          smax_depth_depth = gs.smax_depth_depth + 1
-          smax_depth_score = gs.smax_depth_score
+        if (smaxDepthDepth < gs.smaxDepthDepth + 1) {
+          smaxDepthDepth = gs.smaxDepthDepth + 1
+          smaxDepthScore = gs.smaxDepthScore
         }
-        if (smin_depth_depth > gs.smin_depth_depth + 1) {
-          smin_depth_depth = gs.smin_depth_depth + 1
-          smin_depth_score = gs.smin_depth_score
+        if (sminDepthDepth > gs.sminDepthDepth + 1) {
+          sminDepthDepth = gs.sminDepthDepth + 1
+          sminDepthScore = gs.sminDepthScore
         }
-        swinner_count += gs.swinner_count
+        swinnerCount += gs.swinnerCount
 
-        if (player == First) {
-          if (gs.fwinner_path)
-            fwinner_path = true
-          if (!gs.swinner_path)
-            swinner_path = false
+        if (player == FirstPlayer) {
+          if (gs.fwinnerPath)
+            fwinnerPath = true
+          if (!gs.swinnerPath)
+            swinnerPath = false
         } else {
-          if (gs.swinner_path)
-            swinner_path = true
-          if (!gs.fwinner_path)
-            fwinner_path = false
+          if (gs.swinnerPath)
+            swinnerPath = true
+          if (!gs.fwinnerPath)
+            fwinnerPath = false
         }
       }
     }
     this
+  }
+
+  override def equals(o: Any) = {
+    o match {
+      case gs: GameStat =>
+        fmaxScoreScore == gs.fmaxScoreScore &&
+          fmaxScoreDepth == gs.fmaxScoreDepth &&
+          fmaxDepthScore == gs.fmaxDepthScore &&
+          fmaxDepthDepth == gs.fmaxDepthDepth &&
+          fminDepthScore == gs.fminDepthScore &&
+          fminDepthDepth == gs.fminDepthDepth &&
+          fwinnerPath == gs.fwinnerPath &&
+          fwinnerCount == gs.fwinnerCount &&
+          smaxScoreScore == gs.smaxScoreScore &&
+          smaxScoreDepth == gs.smaxScoreDepth &&
+          smaxDepthScore == gs.smaxDepthScore &&
+          smaxDepthDepth == gs.smaxDepthDepth &&
+          sminDepthScore == gs.sminDepthScore &&
+          sminDepthDepth == gs.sminDepthDepth &&
+          swinnerPath == gs.swinnerPath &&
+          swinnerCount == gs.swinnerCount &&
+          player == gs.player
+      case _: Any => false
+    }
   }
 
   override def toString = {
@@ -194,8 +215,8 @@ class GameStat extends NodeValue {
      * Max depth : 12 (14) |
      * Min depth : 12 (15) |
      */
-    val wincount = fwinner_count + swinner_count
-    val (fwin, swin) = if (wincount != 0) (100 * fwinner_count / wincount, 100 * swinner_count / wincount)
+    val wincount = fwinnerCount + swinnerCount
+    val (fwin, swin) = if (wincount != 0) (100 * fwinnerCount / wincount, 100 * swinnerCount / wincount)
     else (-1, -1)
     ("Player 1             | Player 2            \n" +
       "Win : %3d%% %-7d | Win : %3d%% %-7d\n" +
@@ -203,10 +224,10 @@ class GameStat extends NodeValue {
       "Max score : %-2d (%-3d) | Max score : %-2d (%-3d)\n" +
       "Max depth : %-2d (%-3d) | Max depth : %-2d (%-3d)\n" +
       "Min depth : %-2d (%-3d) | Min depth : %-2d (%-3d)")
-      .format(fwin, fwinner_count, swin, swinner_count,
-        fwinner_path, swinner_path,
-        fmax_score_score, fmax_score_depth, smax_score_score, smax_score_depth,
-        fmax_depth_score, fmax_depth_depth, smax_depth_score, smax_depth_depth,
-        fmin_depth_score, fmin_depth_depth, smin_depth_score, smin_depth_depth)
+      .format(fwin, fwinnerCount, swin, swinnerCount,
+        fwinnerPath, swinnerPath,
+        fmaxScoreScore, fmaxScoreDepth, smaxScoreScore, smaxScoreDepth,
+        fmaxDepthScore, fmaxDepthDepth, smaxDepthScore, smaxDepthDepth,
+        fminDepthScore, fminDepthDepth, sminDepthScore, sminDepthDepth)
   }
 }

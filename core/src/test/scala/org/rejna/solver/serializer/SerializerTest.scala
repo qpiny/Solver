@@ -1,34 +1,31 @@
 package org.rejna.solver.serializer
 
-import sbinary._
-import sbinary.DefaultProtocol._
-import sbinary.Operations._
-import org.rejna.solver._
-import org.rejna.solver.mancala._
+import org.scalacheck._
+import org.scalacheck.Test.Parameters
+import sbinary.Operations
 
-object SerializerTest {
-	def doIt = {
-	  val g = new Game()
-	  g.do_play(3)
-	  g.do_play(4)
-	  println(g)
-	  val data = toByteArray(g)(Game.GameFormat)
-	  println(data.mkString("(", ",", ")"))
-	  val g2 = fromByteArray(data)(Game.GameFormat)
-	  println(g2)
-	  println(g2 == g)
-	}
-	
-	def gameStatTest = {
-	  val data1 = Array.ofDim[Byte](GameStat.entryLength)
-	  scala.util.Random.nextBytes(data1)
-	  println(data1.mkString("(", ",", ")"))
-	  val gs = fromByteArray(data1)(GameStat.GameStatFormat)
-	  println(gs)
-	  val data2 = toByteArray(gs)(GameStat.GameStatFormat)
-	  println(data2.mkString("(", ",", ")"))
-	  println(data1.deep == data2.deep)
-	}
+object SerializerCheck extends Properties("Serializer") {
+  import org.rejna.solver.mancala._
+
+  val gameSerializerProp = Prop.forAll(MancalaCheck.genGame)(g1 => {
+    val format = Game.GameFormat
+    val data = Operations.toByteArray(g1)(format)
+    val g2 = Operations.fromByteArray(data)(format)
+    g1 == g2
+  })
+  
+  val GameStatSerializeProp = Prop.forAll(MancalaCheck.genGameStat)(gs1 => {
+    val format = GameStat.GameStatFormat
+    val data = Operations.toByteArray(gs1)(format)
+    val gs2 = Operations.fromByteArray(data)(format)
+    gs1 == gs2
+  })
+  
+  gameSerializerProp.check(new Parameters.Default {
+    override val minSuccessfulTests = 1000
+  })
+  
+  GameStatSerializeProp.check(new Parameters.Default {
+    override val minSuccessfulTests = 1000
+  })
 }
-
-//SerializerTest.gameStatTest

@@ -1,69 +1,49 @@
 package org.rejna.util
 
-import scala.collection.mutable.{ ArrayBuffer, ListBuffer }
+import scala.collection.mutable.{ ArrayBuffer, ListBuffer, Queue }
 
 class BitStreamWriter {
-  private var stb = 0
-  private var stb_len = 0
+  private var stb = 0L
+  private var stbLen = 0
   private val content = ArrayBuffer[Byte]()
 
-  def add(value: Int, len: Int): Unit = {
-    val req_bits = 8 - stb_len
-    if (len >= req_bits) {
-      ((value << stb_len) | stb).asInstanceOf[Byte] +=: content
-      //((stb | ((value >> (len - req_bits)) & ((1 << req_bits) - 1))).asInstanceOf[Byte]) +=: content
-      stb = 0
-      stb_len = 0
-      if (len != req_bits)
-        add(value >> req_bits, len - req_bits)
-    } else {
-      stb |= (value & ((1 << len) - 1)) << stb_len
-      stb_len += len
+  def add(value: Long, len: Int): Unit = {
+    if (len > 32)
+      sys.error("Invalid parameter") // FIXME throw better exception
+    stb |= value << stbLen
+    stbLen += len
+    while (stbLen >= 8) {
+      content += (stb & 0xff).asInstanceOf[Byte] 
+      stb >>= 8
+      stbLen -= 8
     }
   }
 
   def toByteArray = {
-    if (stb_len > 0)
-      (content.clone += stb.asInstanceOf[Byte]).toArray
+    if (stbLen > 0)
+      (content :+ (stb & 0xff).asInstanceOf[Byte]).toArray
     else
       content.toArray
   }
 }
 
-class BitStreamReader(init: Byte*) {
-  private var stb = 0
-  private var stb_len = 0
-  private val content = ListBuffer[Byte](init: _*)
+class BitStreamReader(val content: Queue[Byte]) {
+  private var stb = 0L
+  private var stbLen = 0
+  
+  def this(init: Byte*) = this(Queue[Byte](init: _*))
 
   def get(len: Int): Int = {
-    if (len <= stb_len) {
-      val r = stb & ((1 << len) - 1)
-      stb_len -= len
-      stb >>= len
-      r
-    } else if (stb_len == 0) {
-      var r = 0
-      (0 until len - 7 by 8).foreach(i => {
-        r |= (0xff & content.remove(content.length - 1)) << i
-      })
-      val v = len % 8
-      if (v != 0) {
-        stb = 0xff & content.remove(content.length - 1)
-        stb_len = 8
-        r <<= v
-        r |= get(v)
-      }
-      r
-    } else { // 0 < stb_len < len
-      val l = len - stb_len
-      val sl = stb_len
-      var r = stb
-      stb = 0
-      stb_len = 0
-      r |= get(l) << sl
-      r
+    if (len > 32)
+      sys.error("Invalid parameter") // FIXME throw better exception
+    while (stbLen < len) {
+      stb |= (content.dequeue.asInstanceOf[Long] & 0xff) << stbLen
+      stbLen += 8
     }
-
+    val r = stb & (1 << len) -1
+    stb >>= len
+    stbLen -= len
+    r.asInstanceOf[Int]
   }
 }
 //     ListBuffer → Builder → BufferLike → Growable

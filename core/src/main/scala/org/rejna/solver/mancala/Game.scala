@@ -6,7 +6,6 @@ import org.rejna.solver.{ Node, TreeCompanion, LoggingClass }
 import org.rejna.solver.serializer.{ SolverMessage, SolverProtocol }
 import org.rejna.util.{ BitStreamReader, BitStreamWriter }
 
-import org.rejna.solver.mancala.Player._
 import org.rejna.solver.mancala.Action._
 
 object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
@@ -15,39 +14,40 @@ object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
   val entryLength = 8 // (4 bits * 6 slots + 8 bits * 1 totalSlot) * 2 players
 
   val GameFormat = new Format[Game] {
+    def getBeads(bs: BitStreamReader) = Array.fill[Int](6)(bs.get(4)) :+ bs.get(8)
+
     def reads(in: Input): Game = {
       val buffer = Array.ofDim[Byte](entryLength)
       in.readFully(buffer)
-      val bs = new BitStreamReader(buffer: _*)
-      def getBeads = {
-        val a = ((0 to 5) map { x => bs.get(4) })
-        (a :+ bs.get(8)).toArray
+      val player = if ((buffer(3) & 0x80) != 0) {
+        buffer(3) = (buffer(3) & 0x7f).toByte
+        SecondPlayer
       }
-      new Game(getBeads, getBeads)
+      else FirstPlayer
+      val bs = new BitStreamReader(buffer: _*)
+      new Game(getBeads(bs), getBeads(bs), player)
     }
 
     def writes(out: Output, game: Game) = {
       var overflow = false
       val bs = new BitStreamWriter
-
-      (0 to 1) map { p =>
-        val player = game.player.id ^ p
-        (0 to 5) map { i =>
-          val nbeads = game.slots(player)(i).nbeads
+      for (p <- Player) {
+        for (s <- (0 to 5)) {
+          val nbeads = game.slotValue(p, s)
           val n = if (nbeads > 15) {
-            if (overflow) {
-              log.error(s"Double overflow in slots : ${game}")
-            } else
-              overflow = true
+            if (overflow) log.error(s"Double overflow in slots : ${game}")
+            else overflow = true
             15
-          } else {
+          } else
             nbeads
-          }
           bs.add(n, 4)
         }
-        bs.add(game.slots(player)(6).nbeads, 8)
+        bs.add(game.slotValue(p, 6), 8)
       }
-      out.writeAll(bs.toByteArray)
+      val data = bs.toByteArray
+      if (game.player == SecondPlayer)
+    	  data(3) = (data(3) | 0x80).toByte
+      out.writeAll(data)
     }
   }
 
@@ -55,19 +55,19 @@ object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
     SolverProtocol.registerFormat(classOf[Game], GameFormat)
 }
 
-class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player = First) extends Node {
+class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player = FirstPlayer) extends Node {
   type Self = Game
   /* init slots */
-  val slots = Array.ofDim[Slot](2, 7)
+  private val slots = Array.ofDim[Slot](2, 7)
 
-  slots(0)(6) = new ScoreSlot(First, first_beads(6))
-  slots(1)(6) = new ScoreSlot(Second, second_beads(6))
+  slots(0)(6) = new ScoreSlot(FirstPlayer, first_beads(6))
+  slots(1)(6) = new ScoreSlot(SecondPlayer, second_beads(6))
   slots(0)(6).oppositeSlot = slots(1)(6)
   slots(1)(6).oppositeSlot = slots(0)(6)
 
   for (i <- (5 to 0 by -1)) {
-    slots(0)(i) = new Slot(First, first_beads(i))
-    slots(1)(i) = new Slot(Second, second_beads(i))
+    slots(0)(i) = new Slot(FirstPlayer, first_beads(i))
+    slots(1)(i) = new Slot(SecondPlayer, second_beads(i))
     slots(0)(i).nextSlot = slots(0)(i + 1)
     slots(1)(i).nextSlot = slots(1)(i + 1)
   }
@@ -85,7 +85,7 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   def this(i: Int) = this(Array(i, i, i, i, i, i, 0), Array(i, i, i, i, i, i, 0))
   def this() = this(4)
 
-  def do_play(i: Int): Action = {
+  def doPlay(i: Int): Action = {
     if (i < 0 || i > 5)
       return InvalidMove
 
@@ -107,9 +107,9 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     }
 
     /* game over ? */
-    for (i <- (0 to 1)) {
-      if (!slots(i).exists(s => s.nbeads > 0 && !s.isInstanceOf[ScoreSlot])) {
-        slots(i ^ 1)(6).nbeads = slots(i ^ 1).foldLeft(0)((score, slot) => score + slot.empty)
+    for (p <- Player) {
+      if (!slots(p.id).exists(s => s.nbeads > 0 && !s.isInstanceOf[ScoreSlot])) {
+        slots(p.other.id)(6).nbeads = slots(p.other.id).foldLeft(0)((score, slot) => score + slot.empty)
         return winner
       }
     }
@@ -118,38 +118,40 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     if (slot.isInstanceOf[ScoreSlot])
       PlayAgain
     else {
-      player = Player(player.id ^ 1)
+      player = player.other
       NextPlayer
     }
   }
 
   def winner: Action = {
-    if (slots(0)(6).nbeads > slots(1)(6).nbeads)
+    val s = score
+    if (s._1 > s._2)
       FirstWin
-    else if (slots(0)(6).nbeads < slots(1)(6).nbeads)
+    else if (s._1 < s._2)
       SecondWin
     else
       TieGame
   }
 
-  def score = (slots(0)(6).nbeads, slots(1)(6).nbeads)
+  def slotValue(player: Player, s: Int) = slots(player.id)(s).nbeads
+
+  def score = (slots(FirstPlayer.id)(6).nbeads, slots(SecondPlayer.id)(6).nbeads)
 
   def play(i: Int): (Game, Action) = {
     val g = new Game(this)
-    (g, g.do_play(i))
+    (g, g.doPlay(i))
   }
 
   val maxChildren = 6
 
   def children = {
-    (0 until 6)
-      .map(i => {
-        val g = play(i)
-        if (g._2 == InvalidMove)
-          None
-        else
-          Some(g._1)
-      }).toArray
+    (0 until 6).map(i => {
+      val g = play(i)
+      if (g._2 == InvalidMove)
+        None
+      else
+        Some(g._1)
+    }).toArray
   }
 
   /* return gameStat */
@@ -173,10 +175,11 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   override def hashCode = slots.hashCode
 
   override def equals(obj: Any): Boolean = {
-    if (!obj.isInstanceOf[Game])
-      return false
-    val g = obj.asInstanceOf[Game]
-    g.slots(g.player.id).deep == slots(player.id).deep &&
-      g.slots(g.player.id ^ 1).deep == slots(player.id ^ 1).deep
+    obj match {
+      case g: Game => g.player == player &&
+        g.slots(0).deep == slots(0).deep &&
+        g.slots(1).deep == slots(1).deep
+      case _: Any => false
+    }
   }
 }

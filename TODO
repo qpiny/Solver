@@ -9,5 +9,5 @@
 	    ext.destDir = new File(buildDir, '..')
 	    ...
  * Adjust dispatcher parameters
- * Add supervision interface (webui ?)
  * Implement resume
+ * Add unit tests for Node and NodeValue creation

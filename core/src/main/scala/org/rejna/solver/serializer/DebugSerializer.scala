@@ -3,7 +3,7 @@ package org.rejna.solver.serializer
 import akka.actor._
 import akka.serialization.Serializer
 import org.rejna.solver.LoggingClass
-
+/*
 class DebugSerializer(system: ExtendedActorSystem) extends akka.serialization.JavaSerializer(system) with LoggingClass {
   log.info("DebugSerializer initialization")
 
@@ -20,3 +20,4 @@ class DebugSerializer(system: ExtendedActorSystem) extends akka.serialization.Ja
 
   override def identifier: Int = 33554437
 }
+*/

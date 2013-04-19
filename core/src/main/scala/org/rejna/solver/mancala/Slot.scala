@@ -3,7 +3,6 @@ package org.rejna.solver.mancala
 import scala.concurrent.{ Promise, Await }
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import org.rejna.solver.mancala.Player._
 
 class Slot(val owner: Player, var nbeads: Int) extends Serializable {
   private val nextSlotPromise = Promise[Slot]
