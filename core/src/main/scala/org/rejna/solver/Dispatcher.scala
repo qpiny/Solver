@@ -53,7 +53,7 @@ case class MonitoredMailbox(monitored: Boolean) extends MailboxType {
       val name = ownerName
       final def queue: Queue[Envelope] = this
     }
-    if (!monitored) q // || ownerName == "/" || ownerName == "system" || ownerName == "user") q
+    if (!monitored || ownerName.startsWith("root") || ownerName.startsWith("$")) q // worker and temp mailbox mustn't be monitored
     else new MonitoredMailQueue(ownerName, q)
   }
 
@@ -61,7 +61,7 @@ case class MonitoredMailbox(monitored: Boolean) extends MailboxType {
 
 object WorkerComparator extends Comparator[Runnable] with LoggingClass {
   def getName(r: Runnable) = r.getClass.getMethod("messageQueue").invoke(r) match {
-    case mmq: MonitoredMailQueue => mmq.name
+    case nmq: NamedMailQueue => nmq.name
     case _ => "UnmonitoredActor"
   }
 

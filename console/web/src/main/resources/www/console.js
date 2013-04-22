@@ -2,7 +2,7 @@ var GraphMgr = {
 	graphList : {},
 
 	addGraph : function(name, options) {
-		this.graphList[name] = new Graph($('#graphs'), name, options);
+		this.graphList[name] = new Graph($("#graphs"), name, options);
 	},
 
 	addValue : function(name, timestamp, value) {
@@ -45,8 +45,9 @@ $(function() {
 		memoryData[0].data.push([ timestamp, totalMemory - freeMemory ]);
 		memoryData[1].data.push([ timestamp, freeMemory ]);
 
-		$.plot($('#memory'), memoryData, {
+		$.plot($("#memory"), memoryData, {
 			series : {
+				stack: true,
 				lines : {
 					show : true,
 					fill : true,
@@ -58,6 +59,19 @@ $(function() {
 				position : "bottom",
 				timeformat : "%H:%M:%S",
 				minTickSize : [ 5, "second" ]
+			},
+			yaxis : {
+				min : 0,
+				tickFormatter: function(val, axis) {
+					if (val >= 1000000000)
+						return (val / 1000000000).toFixed(axis.tickDecimals) + " GB";
+					else if (val >= 1000000)
+				        return (val / 1000000).toFixed(axis.tickDecimals) + " MB";
+				    else if (val >= 1000)
+				        return (val / 1000).toFixed(axis.tickDecimals) + " kB";
+				    else
+				        return val.toFixed(axis.tickDecimals) + " B";
+				}
 			},
 			legend : {
 				position : "nw"
@@ -75,7 +89,7 @@ $(function() {
 				(gcTime - previousGC.load) / (timestamp - previousGC.ts) ])
 		previousGC.ts = timestamp;
 		previousGC.load = gcTime;
-		$.plot($('#cpu'), cpuData, {
+		$.plot($("#cpu"), cpuData, {
 			series : {
 				shadowSize : 0
 			},
@@ -85,15 +99,24 @@ $(function() {
 				timeformat : "%H:%M:%S",
 				minTickSize : [ 5, "second" ]
 			},
+			yaxis : {
+				min : 0,
+				max: 1,
+				tickFormatter: function(val, axis) {
+					return (100 * val) + "%";
+				}
+			},
 			legend : {
 				position : "nw"
 			}
 		});
 	};
 
-	var ws = $.websocket("ws://localhost:8888/websocket/", {
+	var port = document.location.port;
+	port = typeof port !== "undefined" && port !== null ? ":" + port : "";
+	var ws = $.websocket("ws://" + document.location.host + port + "/websocket/", {
 		open : function() {
-			ws.send('MonitorSubscribe', [ '*' ]);
+			ws.send("MonitorSubscribe", [ "*" ]);
 		},
 		events : {
 			MonitorData : function(e) {
@@ -110,7 +133,7 @@ $(function() {
 
 	});
 
-	$('#start').click(function() {
-		ws.send('StartComputation')
+	$("#start").click(function() {
+		ws.send("StartComputation")
 	});
 });

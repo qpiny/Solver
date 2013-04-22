@@ -125,7 +125,7 @@ class MonitoredPrioBlockingQueue(name: String) extends PrioBlockinkQueue with Lo
   
   private def update(r: Runnable): Runnable = {
     r.getClass.getMethod("messageQueue").invoke(r) match {
-	    case mmq: MonitoredMailQueue => monitoredPrio.set(mmq.name.length)
+	    case nmq: NamedMailQueue => monitoredPrio.set(nmq.name.length)
 	    case r: Any => log.warn(s"Invalid MonitoredPrioBlockingQueue member : ${r.getClass.getName}")
     }
     r

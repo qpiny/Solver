@@ -6,7 +6,7 @@ var Graph = function(placeholder, name, options) {
 	this.addValue = function(_timestamp, _value) {
 		var l = this.data.length;
 		var timestamp = parseInt(_timestamp);
-		if (typeof _value == 'object' && 'current' in _value) {
+		if (typeof _value == "object" && "current" in _value) {
 			var value = parseInt(_value.current);
 			var min = parseInt(_value.min);
 			var max = parseInt(_value.max);
@@ -75,15 +75,15 @@ var Graph = function(placeholder, name, options) {
 			position : "nw"
 		}
 	}, options);
-	this.graphPlaceholder = $(document.createElement('div')).addClass('graph')
-	this.accordion = $(document.createElement('div')).append(
-			'<h3>' + name + '</h3>').append(this.graphPlaceholder);
+	this.graphPlaceholder = $(document.createElement("div")).addClass("graph")
+	this.accordion = $(document.createElement("div")).append(
+			"<h3>" + name + "</h3>").append(this.graphPlaceholder);
 	placeholder.append(this.accordion);
 	this.accordion.accordion({
 		active : 0,
-		animate : 'easeInOutQuint',
+		animate : "easeInOutQuint",
 		collapsible : true,
-		heightStyle : 'content'
+		heightStyle : "content"
 	});
 	this.data = [];
 	this.rate = [];
