@@ -46,21 +46,3 @@ class BitStreamReader(val content: Queue[Byte]) {
     r.asInstanceOf[Int]
   }
 }
-//     ListBuffer → Builder → BufferLike → Growable
-/*
- * 11 1111 1-010
- */
-object Test {
-  def doIt = {
-    val bs = new BitStreamWriter
-    bs.add(10, 3)
-    bs.add(0xffff, 7)
-    bs.add(0x111, 6)
-    val b = bs.toByteArray
-    println("%s should be [%d, %d]".format(b.mkString("(", ",", ")"), 0x47, 0xFA)) //    0100 01-11 1111 1-010
-    val r = new BitStreamReader(b: _*)
-    println("%d should be %d".format(r.get(3), 10 & ((1 << 3) -1)))
-    println("%d should be %d".format(r.get(7), 0xffff & ((1 << 7) -1)))
-    println("%d should be %d".format(r.get(6), 0x111 & ((1 << 6) -1)))
-  }
-}

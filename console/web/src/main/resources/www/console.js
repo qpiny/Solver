@@ -72,8 +72,7 @@ $(function() {
 			cpuData[0].data.push([ timestamp, cpuLoad / cpuCount ]);
 		cpuData[1].data.push([
 				timestamp,
-				(gcTime - previousGC.load) / (timestamp - previousGC.ts)
-						/ cpuCount ])
+				(gcTime - previousGC.load) / (timestamp - previousGC.ts) ])
 		previousGC.ts = timestamp;
 		previousGC.load = gcTime;
 		$.plot($('#cpu'), cpuData, {

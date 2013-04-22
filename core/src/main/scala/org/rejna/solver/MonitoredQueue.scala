@@ -120,13 +120,13 @@ class MonitoredMailQueue(val name: String, queue: MessageQueue) extends MessageQ
 
 trait NamedMailQueue { val name: String }
 
-class MonitoredPrioBlockingQueue(name: String) extends PrioBlockinkQueue {
+class MonitoredPrioBlockingQueue(name: String) extends PrioBlockinkQueue with LoggingClass {
   val monitoredPrio = Monitor(DefaultSystem.system).getGauge(s"${name}.prio")
   
   private def update(r: Runnable): Runnable = {
     r.getClass.getMethod("messageQueue").invoke(r) match {
 	    case mmq: MonitoredMailQueue => monitoredPrio.set(mmq.name.length)
-	    case _ => 
+	    case r: Any => log.warn(s"Invalid MonitoredPrioBlockingQueue member : ${r.getClass.getName}")
     }
     r
   }

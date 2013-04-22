@@ -102,7 +102,6 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
 
     /* capture */
     if (slot.nbeads == 1 && slot.owner == player && !slot.isInstanceOf[ScoreSlot] && slot.oppositeSlot.nbeads != 0) {
-      println("Capture !")
       slots(player.id)(6).nbeads += slot.oppositeSlot.empty + slot.empty
     }
 

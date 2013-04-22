@@ -16,6 +16,7 @@ import org.rejna.solver.NodeValue
 import org.rejna.solver.serializer.SolverProtocol
 import org.rejna.util.DynamicAccess._
 import org.rejna.util.DynamicAccess
+import org.rejna.solver.LoggingClass
 
 class JDBMCache(val config: Config) extends NodeCacheBuilder with Serializable {
   val fileName = config.getString("file")
@@ -33,7 +34,7 @@ class JDBMCache(val config: Config) extends NodeCacheBuilder with Serializable {
     }
   }
 
-  object KeySerializer extends Serializer[Node] with Serializable {
+  object KeySerializer extends Serializer[Node] with Serializable with LoggingClass {
     import SolverProtocol.{ serializeObject, deserializeObject, dataInputToInput, dataOutputToOutput }
     def serialize(out: DataOutput, key: Node) = serializeObject(out, key)
     def deserialize(in: DataInput) = {
@@ -41,7 +42,7 @@ class JDBMCache(val config: Config) extends NodeCacheBuilder with Serializable {
       val origAvail = oi.available
       val ret = deserializeObject(in, classOf[Node])
       if (origAvail - oi.available() != 8) {
-        println("Node deserializer has readed %d bytes (%d - %d)".format(origAvail - oi.available(), origAvail, oi.available()))
+        log.error("Node deserializer has readed %d bytes (%d - %d)".format(origAvail - oi.available(), origAvail, oi.available()))
       }
       ret
     }

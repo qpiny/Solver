@@ -50,7 +50,7 @@ class WebSocketHandler extends Actor {
   def addSubscriber(s: WebSocketFrameEvent): Unit = {
     subscribers += s
     if (!schedule.isDefined)
-      schedule = Some(context.system.scheduler.schedule(0 seconds, 1 seconds, self, SendData)(context.system.dispatcher))
+      schedule = Some(context.system.scheduler.schedule(2 seconds, 3 seconds, self, SendData)(context.system.dispatcher))
   }
 
   def removeSubscriber(s: WebSocketFrameEvent): Unit = {

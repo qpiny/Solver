@@ -45,12 +45,6 @@ case class MonitoredMailbox(monitored: Boolean) extends MailboxType {
   import collection.JavaConversions._
   def this(settings: ActorSystem.Settings, config: Config) = {
     this(config.hasPath("monitored") && config.getBoolean("monitored"))
-//    println("Mailbox config :")
-//    for (kv <- config.entrySet) {
-//      val k = kv.getKey
-//      val v = kv.getValue
-//      println(s"${k} : ${v.render}")
-//    }
   }
 
   final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue = {
