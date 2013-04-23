@@ -8,7 +8,7 @@ import org.rejna.solver.cache._
 import org.rejna.solver.serializer.{ SolverMessage, SolverProtocol, CommonTypes }
 
 case class ComputeMessage(requestor: ActorRef, child: Int, node: Node) extends SolverMessage
-case class ResultMessage(n: Int, value: NodeValue, id: Int) extends SolverMessage
+case class ResultMessage(n: Int, nodeCompute: NodeCompute, id: Int) extends SolverMessage
 
 trait WorkerProtocol extends CommonTypes {
   SolverProtocol.registerFormat(classOf[ComputeMessage], asProduct3(ComputeMessage)(ComputeMessage.unapply(_).get))
@@ -24,14 +24,14 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
   var requestor: ActorRef = _ // my parent
   var child: Int = -1 // child number according to my parent, [0-6[ for mancala
   var node: Node = _ // requested node computation (find node value)
-  var result: NodeValue = _ // computing node value
+  var result: NodeCompute = _ // computing node value
   var children: Array[Int] = _ // my children ids
   
   override def preStart = {
     log.info(s"${this} is created")
   }
 
-  override def onHit(_id: Int, _result: NodeValue) = {
+  override def onHit(_id: Int, _result: NodeCompute) = {
     id = _id
     result = _result
     stop
@@ -68,7 +68,7 @@ class Worker extends Actor with LoggingClass with ActorName with CacheCallback w
       requestor = _requestor
       child = _child
       node = _node
-      result = node.getValue // empty node value
+      result = node.getNodeCompute // empty node compute
       cache.checkCache(self, node)
       Monitor(context.system).incCounter("worker.start")
 

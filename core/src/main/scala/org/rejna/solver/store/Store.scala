@@ -19,16 +19,16 @@ trait StoreProtocol extends CommonTypes {
 }
 
 class StoreMessage extends SolverMessage
-case class SaveMessage(requestor: Option[ActorRef], value: NodeValue, children: Array[Int]) extends StoreMessage {
-  override def toString = "SaveMessage(%s, %s)".format(value, children.mkString("(", ",", ")"))
+case class SaveMessage(requestor: Option[ActorRef], nodeCompute: NodeCompute, children: Array[Int]) extends StoreMessage {
+  override def toString = "SaveMessage(%s, %s)".format(nodeCompute, children.mkString("(", ",", ")"))
 }
 case class SavedMessage(id: Int) extends StoreMessage
 case class LoadMessage(requestor: Option[ActorRef], id: Int) extends StoreMessage
-case class LoadedMessage(id: Int, value: NodeValue, children: Array[Int]) extends StoreMessage
+case class LoadedMessage(id: Int, nodeCompute: NodeCompute, children: Array[Int]) extends StoreMessage
 
 trait StoreCallback {
   def onSaved(id: Int) = {}
-  def onLoaded(id: Int, value: NodeValue, children: Array[Int]) = {}
+  def onLoaded(id: Int, nodeCompute: NodeCompute, children: Array[Int]) = {}
 }
 
 class Store(val system: ActorSystem, val config: Config) extends Extension with ClusterMember {
@@ -37,8 +37,8 @@ class Store(val system: ActorSystem, val config: Config) extends Extension with 
   cluster.subscribe(this)
 
   def onBecomeMaster(arefs: Iterable[ActorRef]) = {
-    val nodeValueClass = Class.forName(config.getString("class"))
-    val nodeValueCompanion = DynamicAccess.getCompanion[TreeCompanion[NodeValue]](nodeValueClass)
+    val nodeComputeClass = Class.forName(config.getString("class"))
+    val nodeComputeCompanion = DynamicAccess.getCompanion[TreeCompanion[NodeCompute]](nodeComputeClass)
     val aref = system.actorOf(Props(new ConfigurableClassCreator[StoreActor](config.getString("store-class"), config)).withDispatcher(config.getString("dispatcher")), name = "store-actor")
     cluster.createRouter("store", IndexedSeq(aref), config.getString("dispatcher"))
   }
@@ -46,18 +46,18 @@ class Store(val system: ActorSystem, val config: Config) extends Extension with 
   def processStoreMessage(message: StoreMessage, callback: StoreCallback) = {
     message match {
       case SavedMessage(id) => callback.onSaved(id)
-      case LoadedMessage(id, value, children) => callback.onLoaded(id, value, children)
+      case LoadedMessage(id, nodeCompute, children) => callback.onLoaded(id, nodeCompute, children)
     }
   }
 
-  def save(requestor: ActorRef, value: NodeValue, children: Array[Int]): Unit =
-    storeActor ! SaveMessage(Some(requestor), value, children)
+  def save(requestor: ActorRef, nodeCompute: NodeCompute, children: Array[Int]): Unit =
+    storeActor ! SaveMessage(Some(requestor), nodeCompute, children)
 
   def load(requestor: ActorRef, id: Int) =
     storeActor ! LoadMessage(Some(requestor), id)
 
-  def futureSave(value: NodeValue, children: Array[Int])(implicit timeout: Timeout) = {
-    ask(storeActor, SaveMessage(None, value, children))
+  def futureSave(nodeCompute: NodeCompute, children: Array[Int])(implicit timeout: Timeout) = {
+    ask(storeActor, SaveMessage(None, nodeCompute, children))
       .mapTo[SavedMessage]
       .map(s => (s.id))(system.dispatcher)
   }
@@ -65,7 +65,7 @@ class Store(val system: ActorSystem, val config: Config) extends Extension with 
   def futureLoad(id: Int)(implicit timeout: Timeout) =
     ask(storeActor, LoadMessage(None, id))
       .mapTo[LoadedMessage]
-      .map(l => (l.id, l.value, l.children))(system.dispatcher)
+      .map(l => (l.id, l.nodeCompute, l.children))(system.dispatcher)
 }
 
 object Store extends ExtensionId[Store] with ExtensionIdProvider with LoggingClass {
@@ -86,17 +86,17 @@ object Store extends ExtensionId[Store] with ExtensionIdProvider with LoggingCla
 abstract class StoreActor extends Actor with ActorName with LoggingClass with ConfigurableClass {
   lazy val monitor = Monitor(context.system)
   
-  def save(value: NodeValue, children: Array[Int]): Int
-  def load(id: Int): (NodeValue, Array[Int])
+  def save(nodeCompute: NodeCompute, children: Array[Int]): Int
+  def load(id: Int): (NodeCompute, Array[Int])
 
   def receive = LoggingReceive(log) {
-    case SaveMessage(requestor, value, children) =>
-      requestor.getOrElse(sender) ! SavedMessage(save(value, children))
+    case SaveMessage(requestor, nodeCompute, children) =>
+      requestor.getOrElse(sender) ! SavedMessage(save(nodeCompute, children))
       monitor.incCounter("store.save")
 
     case LoadMessage(requestor, id) =>
-      val (value, children) = load(id)
-      requestor.getOrElse(sender) ! LoadedMessage(id, value, children)
+      val (nodeCompute, children) = load(id)
+      requestor.getOrElse(sender) ! LoadedMessage(id, nodeCompute, children)
       monitor.incCounter("store.load")
   }
 }

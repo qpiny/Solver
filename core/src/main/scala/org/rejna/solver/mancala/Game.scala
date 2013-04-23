@@ -22,8 +22,7 @@ object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
       val player = if ((buffer(3) & 0x80) != 0) {
         buffer(3) = (buffer(3) & 0x7f).toByte
         SecondPlayer
-      }
-      else FirstPlayer
+      } else FirstPlayer
       val bs = new BitStreamReader(buffer: _*)
       new Game(getBeads(bs), getBeads(bs), player)
     }
@@ -46,7 +45,7 @@ object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
       }
       val data = bs.toByteArray
       if (game.player == SecondPlayer)
-    	  data(3) = (data(3) | 0x80).toByte
+        data(3) = (data(3) | 0x80).toByte
       out.writeAll(data)
     }
   }
@@ -122,6 +121,8 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     }
   }
 
+  def isGameOver = !slots.exists(_.dropRight(1).exists(_.nbeads > 0))
+
   def winner: Action = {
     val s = score
     if (s._1 > s._2)
@@ -154,9 +155,13 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   }
 
   /* return gameStat */
-  override def getValue = {
-    val (f, s) = score
-    new GameStat(player, f, s)
+  override def getNodeCompute = {
+    if (isGameOver) {
+      val (f, s) = score
+      new GameStat(player, f, s)
+    } else
+      new GameStat
+
   }
 
   override def toString = {
@@ -171,13 +176,13 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     sb.toString
   }
 
-  override def hashCode = slots.hashCode
+  override def hashCode = (slots(player.id) ++ slots(player.other.id)).hashCode
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case g: Game => g.player == player &&
-        g.slots(0).deep == slots(0).deep &&
-        g.slots(1).deep == slots(1).deep
+      case g: Game => 
+        g.slots(g.player.id).deep == slots(g.player.id).deep &&
+        g.slots(g.player.other.id).deep == slots(g.player.other.id).deep
       case _: Any => false
     }
   }

@@ -16,12 +16,15 @@ trait HasTreeCompanion
 
 trait Node extends HasTreeCompanion with SolverMessage {
   def children: Array[Option[Node]] // to be replaced by Iterable[(Int, Node)] ?
-  def getValue: NodeValue
+  def getNodeCompute: NodeCompute
 }
 
-trait NodeValue extends HasTreeCompanion with SolverMessage {
-  def update(v: NodeValue): NodeValue
+trait NodeCompute extends HasTreeCompanion with SolverMessage {
+  def getNodeValue(n: Node): NodeValue
+  def update(nc: NodeCompute): NodeCompute
 }
+
+trait NodeValue
 
 trait ConfigurableClass extends SolverMessage {
   val config: Config

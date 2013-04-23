@@ -5,6 +5,8 @@ object Player {
     f(FirstPlayer)
     f(SecondPlayer)
   }
+  
+  def apply(id: Int): Player = if (id == 0) FirstPlayer else SecondPlayer
 }
 abstract sealed class Player {
   val other: Player

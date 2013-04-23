@@ -56,59 +56,36 @@ class MancalaTest extends FlatSpec {
   }
 
   "GameStat" should "be updated with other GameStat" in {
-    val gameStat = new GameStat(
-      init = true,
-      fmaxScoreScore = 30,
-      fmaxScoreDepth = 17,
-      fmaxDepthScore = 26,
-      fmaxDepthDepth = 30,
-      fminDepthScore = 28,
-      fminDepthDepth = 8,
-      fwinnerPath = false,
-      fwinnerCount = 10,
-
-      smaxScoreScore = 29,
-      smaxScoreDepth = 18,
-      smaxDepthScore = 27,
-      smaxDepthDepth = 31,
-      sminDepthScore = 12,
-      sminDepthDepth = 9,
-      swinnerPath = false,
-      swinnerCount = 16,
-      player = FirstPlayer)
+    val gameStat = new GameStat(FirstPlayer,
+      new PlayerStat(10, false,
+        Stat(30, 17),
+        Stat(26, 30),
+        Stat(28, 8)),
+      new PlayerStat(16, false,
+        Stat(29, 18),
+        Stat(27, 31),
+        Stat(12, 9)))
     
-    val expectedGameStat = new GameStat(
-      init = true,
-      fmaxScoreScore = 31,
-      fmaxScoreDepth = 11,
-      fmaxDepthScore = 26,
-      fmaxDepthDepth = 30,
-      fminDepthScore = 28,
-      fminDepthDepth = 8,
-      fwinnerPath = false,
-      fwinnerCount = 10,
-
-      smaxScoreScore = 29,
-      smaxScoreDepth = 18,
-      smaxDepthScore = 27,
-      smaxDepthDepth = 31,
-      sminDepthScore = 45,
-      sminDepthDepth = 5,
-      swinnerPath = false,
-      swinnerCount = 16,
-      player = FirstPlayer)
+    val expectedGameStat = new GameStat(FirstPlayer,
+        new PlayerStat(10, false,
+        Stat(31, 11),
+        Stat(26, 30),
+        Stat(28, 8)),
+      new PlayerStat(16, false,
+        Stat(29, 18),
+        Stat(27, 31),
+        Stat(45, 5)))
     
     expectResult(expectedGameStat) {
-      gameStat.update(new GameStat(
-          init = true,
-          fmaxScoreScore = 31,
-          fmaxScoreDepth = 10,
-          fminDepthDepth = 54,
-          fminDepthScore = 5,
-
-          sminDepthDepth = 4,
-          sminDepthScore = 45
-          ))
+      gameStat.update(new GameStat(FirstPlayer,
+        new PlayerStat(0, false,
+	        Stat(31, 10),
+	        Stat(0, 0),
+	        Stat(5, 54)),
+        new PlayerStat(0, false,
+	        Stat(0, 0),
+	        Stat(0, 0),
+	        Stat(45, 4))))
     }
   }
 }
@@ -117,63 +94,69 @@ object MancalaCheck extends Properties("GameStat") {
   val gen4 = Gen.choose(0, (1 << 4) - 1)
   val gen6 = Gen.choose(0, (1 << 6) - 1)
   val gen7 = Gen.choose(0, (1 << 7) - 1)
-  //val gen8 = Gen.choose(0, (1 << 8) - 1)
-  val gen24 = Gen.choose(0, (1 << 24) - 1)
+  val gen23 = Gen.choose(0, (1 << 23) - 1)
+
+  val genStat = for {
+    score <- gen6
+    depth <- gen7
+  } yield (Stat(score, depth))
+
+  val genPlayerStat = for {
+    winnerCount <- gen23
+    winnerPath <- Arbitrary.arbBool.arbitrary
+    maxScore <- genStat
+    maxDepth <- genStat
+    minDepth <- genStat
+  } yield new PlayerStat(winnerCount, winnerPath, maxScore, maxDepth, minDepth)
+
+  val genPlayer = Gen.oneOf(FirstPlayer, SecondPlayer)
+
   val genGameStat = for {
-    fmaxScoreScore <- gen6
-    fmaxScoreDepth <- gen7
-    fmaxDepthScore <- gen6
-    fmaxDepthDepth <- gen7
-    fminDepthScore <- gen6
-    fminDepthDepth <- gen7
-    fwinnerPath <- Arbitrary.arbBool.arbitrary
-    fwinnerCount <- gen24
-
-    smaxScoreScore <- gen6
-    smaxScoreDepth <- gen7
-    smaxDepthScore <- gen6
-    smaxDepthDepth <- gen7
-    sminDepthScore <- gen6
-    sminDepthDepth <- gen7
-    swinnerPath <- Arbitrary.arbBool.arbitrary
-    swinnerCount <- gen24
-  } yield new GameStat(
-    true,
-    fmaxScoreScore,
-    fmaxScoreDepth,
-    fmaxDepthScore,
-    fmaxDepthDepth,
-    fminDepthScore,
-    fminDepthDepth,
-    fwinnerPath,
-    fwinnerCount,
-
-    smaxScoreScore,
-    smaxScoreDepth,
-    smaxDepthScore,
-    smaxDepthDepth,
-    sminDepthScore,
-    sminDepthDepth,
-    swinnerPath,
-    swinnerCount)
+    player <- genPlayer
+    firstPlayer <- genPlayerStat
+    secondPlayer <- genPlayerStat
+  } yield new GameStat(player, firstPlayer, secondPlayer)
 
   val genGame = for {
     firstBeads <- Gen.listOfN(6, gen4)
     firstScore <- gen7
     secondBeads <- Gen.listOfN(6, gen4)
     secondScore <- gen7
-    player <- Gen.oneOf(FirstPlayer, SecondPlayer)
+    player <- genPlayer
   } yield new Game(
     (firstBeads :+ firstScore).toArray,
     (secondBeads :+ secondScore).toArray, player)
 
+  val statProp = Prop.forAll(genStat)(s => {
+    val bsw = new BitStreamWriter
+    s.pushInBitStream(bsw)
+    val data = bsw.toByteArray
+    val bsr = new BitStreamReader(data: _*)
+    data.length == 2 && s == Stat(bsr)
+  })
+  
+  val playerStatProp = Prop.forAll(genPlayerStat)(ps => {
+    val bsw = new BitStreamWriter
+    ps.pushInBitStream(bsw)
+    val data = bsw.toByteArray
+    val bsr = new BitStreamReader(data: _*)
+    data.length == 8 && ps == new PlayerStat(bsr)
+  })
+  
   val gameStatProp = Prop.forAll(genGameStat)(gs => {
     val bsw = new BitStreamWriter
     gs.pushInBitStream(bsw)
-    val bsr = new BitStreamReader(bsw.toByteArray: _*)
-    gs == new GameStat(bsr)
+    val data = bsw.toByteArray
+    val bsr = new BitStreamReader(data: _*)
+    data.length == 16 && gs == new GameStat(bsr)
   })
 
+  statProp.check(new Parameters.Default {
+    override val minSuccessfulTests = 1000
+  })
+  playerStatProp.check(new Parameters.Default {
+    override val minSuccessfulTests = 1000
+  })
   gameStatProp.check(new Parameters.Default {
     override val minSuccessfulTests = 1000
   })

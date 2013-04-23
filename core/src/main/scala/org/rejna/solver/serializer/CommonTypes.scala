@@ -8,7 +8,7 @@ import com.typesafe.config.{ Config, ConfigFactory }
 import sbinary._
 import sbinary.DefaultProtocol._
 import sbinary.Operations._
-import org.rejna.solver.{ Node, NodeValue, ConfigurableClass, ConfigurableClassCreator }
+import org.rejna.solver.{ Node, NodeCompute, NodeValue, ConfigurableClass, ConfigurableClassCreator }
 import org.rejna.util.DynamicAccess
 
 trait CommonTypes extends DefaultProtocol {
@@ -72,7 +72,7 @@ trait CommonTypes extends DefaultProtocol {
       }
   }
 
-  implicit val nodeValueFormat: Format[NodeValue] = solverMessageFormat[NodeValue](classOf[NodeValue])
+  implicit val nodeComputeFormat: Format[NodeCompute] = solverMessageFormat[NodeCompute](classOf[NodeCompute])
 
   implicit val nodeFormat: Format[Node] = solverMessageFormat[Node](classOf[Node])
 }
