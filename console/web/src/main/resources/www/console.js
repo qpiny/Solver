@@ -112,9 +112,7 @@ $(function() {
 		});
 	};
 
-	var port = document.location.port;
-	port = typeof port !== "undefined" && port !== null ? ":" + port : "";
-	var ws = $.websocket("ws://" + document.location.host + port + "/websocket/", {
+	var ws = $.websocket("ws://" + document.location.host + "/websocket/", {
 		open : function() {
 			ws.send("MonitorSubscribe", [ "*" ]);
 		},

@@ -9,7 +9,9 @@ import org.rejna.util.{ BitStreamReader, BitStreamWriter }
 import org.rejna.solver.mancala.Action._
 
 object Game extends TreeCompanion[Game] with SolverMessage with LoggingClass {
-  val rootNode = new Game()
+  val rootNode = new Game(
+    Array(6, 1, 4, 0, 0, 0, 13),
+    Array(0, 0, 0, 0, 8, 8, 8), FirstPlayer)
   val maxChildren = 6
   val entryLength = 8 // (4 bits * 6 slots + 8 bits * 1 totalSlot) * 2 players
 
@@ -85,7 +87,7 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
   def this() = this(4)
 
   def doPlay(i: Int): Action = {
-    if (i < 0 || i > 5)
+    if (i < 0 || i > 5 || isGameOver)
       return InvalidMove
 
     var slot = slots(player.id)(i)
@@ -104,12 +106,11 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
       slots(player.id)(6).nbeads += slot.oppositeSlot.empty + slot.empty
     }
 
-    /* game over ? */
-    for (p <- Player) {
-      if (!slots(p.id).exists(s => s.nbeads > 0 && !s.isInstanceOf[ScoreSlot])) {
-        slots(p.other.id)(6).nbeads = slots(p.other.id).foldLeft(0)((score, slot) => score + slot.empty)
-        return winner
+    if (isGameOver) {
+      for (p <- Player) {
+        slots(p.id)(6).nbeads = slots(p.id).foldLeft(0)((score, slot) => score + slot.empty)
       }
+      return winner
     }
 
     /* play again */
@@ -121,7 +122,11 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     }
   }
 
-  def isGameOver = !slots.exists(_.dropRight(1).exists(_.nbeads > 0))
+  def isGameOver = {
+    (slots(0).dropRight(1).count(_.nbeads > 0) + slots(0)(6).nbeads) > 24 ||
+      (slots(1).dropRight(1).count(_.nbeads > 0) + slots(1)(6).nbeads) > 24
+    //!slots.exists(_.dropRight(1).exists(_.nbeads > 0))
+  }
 
   def winner: Action = {
     val s = score
@@ -144,7 +149,7 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
 
   val maxChildren = 6
 
-  def children = {
+  def children = { // XXX optimize 
     (0 until 6).map(i => {
       val g = play(i)
       if (g._2 == InvalidMove)
@@ -176,13 +181,18 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
     sb.toString
   }
 
-  override def hashCode = (slots(player.id) ++ slots(player.other.id)).hashCode
+  override def hashCode = {
+    import scala.util.hashing.MurmurHash3.arrayHash
+    val a = arrayHash(slots(player.id),
+      arrayHash(slots(player.other.id)))
+    a
+  }
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case g: Game => 
-        g.slots(g.player.id).deep == slots(g.player.id).deep &&
-        g.slots(g.player.other.id).deep == slots(g.player.other.id).deep
+      case g: Game => !(
+        slots(player.id).zip(g.slots(g.player.id)).exists(x => x._1 != x._2) ||
+        slots(player.other.id).zip(g.slots(g.player.other.id)).exists(x => x._1 != x._2))
       case _: Any => false
     }
   }
