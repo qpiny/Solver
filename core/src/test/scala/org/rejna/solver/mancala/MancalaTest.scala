@@ -30,6 +30,18 @@ class MancalaTest extends FlatSpec {
       startGame.play(0)
     }
   }
+  
+  it should "implement premature end of game" in {
+    val starGame = new Game(
+        Array(0, 0, 0, 0, 1, 0, 23), 
+        Array(1, 0, 0, 2, 0, 3, 18), SecondPlayer)
+    val expectedGame = new Game(
+        Array(0, 0, 0, 0, 0, 0, 26),
+        Array(0, 0, 0, 0, 0, 0, 22), SecondPlayer)
+    expectResult((expectedGame, Action.FirstWin)) {
+      starGame.play(5)
+    }
+  }
 
   "Capture" should "be done when last slot is empty" in {
     val startGame = new Game(
@@ -161,3 +173,19 @@ object MancalaCheck extends Properties("GameStat") {
     override val minSuccessfulTests = 1000
   })
 }
+
+
+/*
+
+
+Player : SecondPlayer
+[23] 0 1 0 0 0 0 
+     1 0 0 2 0 3 [18]
+
+[0] [3] [5] 
+Choice : 5
+Tie game
+* 
+* 
+* 
+*/

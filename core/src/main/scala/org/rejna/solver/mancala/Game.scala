@@ -106,9 +106,16 @@ class Game(first_beads: Array[Int], second_beads: Array[Int], var player: Player
       slots(player.id)(6).nbeads += slot.oppositeSlot.empty + slot.empty
     }
 
+    for (p <- Player) {
+      if (!slots(p.id).dropRight(1).exists(s => s.nbeads > 0)) {
+        slots(p.other.id)(6).nbeads += slots(p.other.id).dropRight(1).foldLeft(0)((score, slot) => score + slot.empty)
+        return winner
+      }
+    }
+    
     if (isGameOver) {
       for (p <- Player) {
-        slots(p.id)(6).nbeads = slots(p.id).foldLeft(0)((score, slot) => score + slot.empty)
+        slots(p.id)(6).nbeads += slots(p.id).dropRight(1).foldLeft(0)((score, slot) => score + slot.empty)
       }
       return winner
     }

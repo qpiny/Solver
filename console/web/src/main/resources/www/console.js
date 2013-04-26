@@ -1,4 +1,4 @@
-var GraphMgr = {
+GraphMgr = {
 	graphList : {},
 
 	addGraph : function(name, options) {
@@ -12,6 +12,12 @@ var GraphMgr = {
 			g = this.graphList[name];
 		}
 		g.addValue(timestamp, value);
+	},
+	
+	draw : function() {
+		$.each(this.graphList, function(name, graph) {
+			graph.draw();
+		});
 	}
 };
 
@@ -45,6 +51,39 @@ $(function() {
 		memoryData[0].data.push([ timestamp, totalMemory - freeMemory ]);
 		memoryData[1].data.push([ timestamp, freeMemory ]);
 
+		var cpuLoad = parseInt(system.cpuLoad);
+		var cpuCount = parseInt(system.cpuCount);
+		var gcTime = parseInt(system.gcTime);
+
+		if (cpuLoad >= 0)
+			cpuData[0].data.push([ timestamp, cpuLoad / cpuCount ]);
+		cpuData[1].data.push([
+				timestamp,
+				(gcTime - previousGC.load) / (timestamp - previousGC.ts) ])
+		previousGC.ts = timestamp;
+		previousGC.load = gcTime;
+	};
+
+	var ws = $.websocket("ws://" + document.location.host + "/websocket/", {
+		open : function() {
+			ws.send("MonitorSubscribe", [ "*" ]);
+		},
+		events : {
+			MonitorData : function(e) {
+				var timestamp = e.data.timestamp;
+				updateSystemGraph(timestamp, e.data.system)
+				$.each(e.data.counters, function(name, value) {
+					GraphMgr.addValue(name, timestamp, value);
+				});
+				$.each(e.data.variables, function(name, data) {
+					GraphMgr.addValue(name, timestamp, data)
+				});
+			}
+		}
+
+	});
+	
+	drawGraph = function() {
 		$.plot($("#memory"), memoryData, {
 			series : {
 				stack: true,
@@ -77,18 +116,7 @@ $(function() {
 				position : "nw"
 			}
 		});
-
-		var cpuLoad = parseInt(system.cpuLoad);
-		var cpuCount = parseInt(system.cpuCount);
-		var gcTime = parseInt(system.gcTime);
-
-		if (cpuLoad >= 0)
-			cpuData[0].data.push([ timestamp, cpuLoad / cpuCount ]);
-		cpuData[1].data.push([
-				timestamp,
-				(gcTime - previousGC.load) / (timestamp - previousGC.ts) ])
-		previousGC.ts = timestamp;
-		previousGC.load = gcTime;
+		
 		$.plot($("#cpu"), cpuData, {
 			series : {
 				shadowSize : 0
@@ -110,28 +138,22 @@ $(function() {
 				position : "nw"
 			}
 		});
+		
+		GraphMgr.draw();
 	};
-
-	var ws = $.websocket("ws://" + document.location.host + "/websocket/", {
-		open : function() {
-			ws.send("MonitorSubscribe", [ "*" ]);
-		},
-		events : {
-			MonitorData : function(e) {
-				var timestamp = e.data.timestamp;
-				updateSystemGraph(timestamp, e.data.system)
-				$.each(e.data.counters, function(name, value) {
-					GraphMgr.addValue(name, timestamp, value);
-				});
-				$.each(e.data.variables, function(name, data) {
-					GraphMgr.addValue(name, timestamp, data)
-				});
-			}
-		}
-
-	});
 
 	$("#start").click(function() {
 		ws.send("StartComputation")
 	});
+	
+	$("#draw").click(function() {
+		drawGraph();
+	});
+	
+	updateGraph = function() {
+		drawGraph();
+		setTimeout('updateGraph();', 3000);
+	};
+	
+	updateGraph();
 });

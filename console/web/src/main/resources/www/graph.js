@@ -31,7 +31,7 @@ var Graph = function(placeholder, name, options) {
 				this.rate.push([ timestamp, 0, 0, 0 ]);
 			this.data.push([ timestamp, value, value, value ]);
 		}
-		this.draw();
+		//this.draw();
 	};
 
 	this.draw = function() {

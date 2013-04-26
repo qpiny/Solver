@@ -27,10 +27,13 @@ object MancalaCrawler extends App {
   }
 
   override def main(args: Array[String]) = {
-    val startGame = new Game(
-      Array(0, 2, 1, 10, 1, 0, 15),
-      Array(0, 0, 9, 0, 7, 0, 3), SecondPlayer)
+//    val startGame = new Game(
+//      Array(0, 2, 1, 10, 1, 0, 15),
+//      Array(0, 0, 9, 0, 7, 0, 3), SecondPlayer)
 
+    val startGame = new Game(
+    Array(6, 1, 4, 0, 0, 0, 13),
+    Array(0, 0, 0, 0, 8, 8, 8), FirstPlayer)
     play(startGame)
   }
 }
